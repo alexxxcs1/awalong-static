@@ -412,12 +412,21 @@ var getHeroframe =
 		younum.pos(Laya.stage.width,0);
 		HeroBox.addChild(younum);
 
+
+		var nightTipString = this.getTipsMessage(this.playerIdentity[this.getHerostep]);
+		var nightTipsText = new Text();
+		nightTipsText.color = "#fff";
+		nightTipsText.font = "Impact";
+		nightTipsText.fontSize = 30;
+		nightTipsText.text = nightTipString;
 		var nightTips = new Sprite();
 		var nightTips_t = Loader.getRes('./custom_assets/nightmsg.png');
 		nightTips.graphics.drawTexture(nightTips_t,0,0);
 		nightTips.size(nightTips_t.width,nightTips_t.height);
 		nightTips.pivot(nightTips_t.width/2,0);
 		nightTips.pos(Laya.stage.width/2,Hero.height*3 + 30);
+		nightTipsText.pivot(nightTipsText.width/2,0);
+		nightTipsText.pos(Laya.stage.width/2,Hero.height*3 + 40);
 		var tips = this.getMsg(this.playerIdentity[this.getHerostep]);
 		if (tips) {
 			for (var k = 0; k < tips.length; k++) {
@@ -467,6 +476,7 @@ var getHeroframe =
 			},500,null,Handler.create(this,function()
 			{
 				HeroBox.addChild(nightTips);
+				HeroBox.addChild(nightTipsText);
 			}));
 		
 			
@@ -518,23 +528,41 @@ var getHeroframe =
 		}
 		
 		switch (hero) {
-				case 'gM':
+				case 'gM':	//梅林
 					return bp;
-				case 'gP':
+				case 'gP':	//派西维尔
 					return gpc;
-				case 'bN':
+				case 'bN':	//莫甘娜
 					return bp_nO;
-				case 'bA':
+				case 'bA':	//刺客
 					return bp_nO;			
-				case 'bO':
+				case 'bO':	//奥伯伦
 					return null;
-				case 'bK':
+				case 'bK':	//莫德雷德
 					return bp_nO;
-				case 'gz':
+				case 'gz':	//忠诚
 					return null;
-				case 'bm':
+				case 'bm':	//爪牙
 					return bp_nO;
 			}
+	},
+	getTipsMessage:function(hero) {
+		switch(hero) {
+			case 'gM':	//梅林
+				return '你是好人,你看到的坏人'
+			case 'gP':	//派西维尔
+				return '你是好人,你看到的梅林和莫甘娜(不分前后)';
+			case 'bm':	//爪牙
+			case 'bN':	//莫甘娜
+			case 'bA':	//刺客
+				return '你是坏人,你看到的你的同伙';
+			case 'bO':	//奥伯伦
+				return '你是坏人,你是个看不到同伙的坏人，太惨了';
+			case 'bK':	//莫德雷德
+				return '你是坏人,这是你看到的同伙,但是你的同伙可看不到你';
+			case 'gz':	//忠诚
+				return '你是个好人，但是你啥也看不到';
+		}
 	},
 	getAPlayer:function()
 	{
