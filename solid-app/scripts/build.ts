@@ -12,9 +12,10 @@ const build = async () => {
         })
     ]
     const context = await getBuildContext(options);
-    console.log(options.outdir);
-    // rimrafSync(options.outdir!);
+    rimrafSync(options.outdir!);
     await context.rebuild();
+    console.log('build success!');
+    context.dispose()
 }
 
 build();
