@@ -3,7 +3,20 @@
 <head>
 </head>
 <script>
-    location.href = './canvas-scripts/index.html'
+    const [ _, query ] = location.href.match(/\?(.*)$/) || [];
+    const query_obj = (query || '').split('&').reduce((result, content) => {
+        const [key, value] = content.split('=');
+        result[key] = value;
+        return result;
+    }, {});
+    console.log(query_obj);
+    let redirect;
+    if(query_obj['old'] === 'true') {
+        redirect = './canvas-scripts/index.html';
+    }else{
+        redirect= './solid-app/dist/index.html';
+    }
+    location.href = redirect;
 </script>
 <body>
 </body>
