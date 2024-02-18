@@ -1,0 +1,36 @@
+{
+  "name": "solid-playground",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "ts-node ./scripts/start.ts",
+    "build": "ts-node ./scripts/build.ts",
+    "patch-esm": "ts-node ./scripts/patch.ts"
+  },
+  "devDependencies": {
+    "@deanc/esbuild-plugin-postcss": "^1.0.2",
+    "@types/fs-extra": "^11.0.4",
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^20.11.4",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@types/rimraf": "^4.0.5",
+    "esbuild": "^0.19.11",
+    "esbuild-plugin-solid": "^0.5.0",
+    "esbuild-plugin-styled-components": "^3.0.1",
+    "fs-extra": "^11.2.0",
+    "mime-types": "^2.1.35",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "rimraf": "^5.0.5"
+  },
+  "dependencies": {
+    "solid-bootstrap": "^1.0.19",
+    "solid-element": "^1.8.0",
+    "solid-js": "^1.8.11",
+    "solid-styled-components": "^0.28.5"
+  }
+}
