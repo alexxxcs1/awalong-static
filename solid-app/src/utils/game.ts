@@ -148,3 +148,39 @@ export const PLAYER_TEAM_MAP = [
         ]
     },
 ]
+export const preloadResource = () => {
+    const resources = Object.values(avatars).reduce<Array<string>>((result, data) => {
+        if(data.asset) {
+            result.push(data.asset);
+        }
+        return result
+    }, []);
+    const tmp = document.createElement('div');
+    tmp.setAttribute('style', 'display:none;');
+    document.body.appendChild(tmp);
+    const load_promises = resources.map(r => {
+        let resolver:(result: boolean) => void;
+        const promise = new Promise<void>((resolve, reject) => {
+            resolver = (result: boolean) => {
+                if(result) {
+                    resolve()
+                }else{
+                    reject();
+                }
+            };
+        });
+        const img = document.createElement('img');
+        img.src = r;
+        img.onload = () => {
+            resolver(true);
+        }
+        img.onerror = () => {
+            resolver(false)
+        }
+        tmp.appendChild(img);
+        return promise;
+    });
+    return Promise.all(load_promises).finally(() => {
+        tmp.parentNode!.removeChild(tmp);
+    });
+}

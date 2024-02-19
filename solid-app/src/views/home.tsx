@@ -1,9 +1,9 @@
 import { Button, Dropdown } from "solid-bootstrap";
 import { SelectCallback } from "solid-bootstrap-core";
-import { Component, For, createEffect, createMemo, createSignal, useContext } from "solid-js";
+import { Component, For, createEffect, createMemo, createResource, createSignal, onMount, useContext } from "solid-js";
 import { styled } from "solid-styled-components";
 import { toast } from "../utils/toast";
-import { AvatarType, PLAYER_TEAM_MAP, getPlayerTeam } from "../utils/game";
+import { AvatarType, PLAYER_TEAM_MAP, getPlayerTeam, preloadResource } from "../utils/game";
 import { openModal } from "../utils/modal";
 import { AvatarCard } from "../components/avatar.card";
 import { GameAppControllerContext } from "../game.controller";
@@ -97,7 +97,15 @@ export const HomeView:Component = () => {
     } catch (error) {
         
     }
-    
+
+    onMount(() => {
+        preloadResource().then(() => {
+            toast('预加载资源成功！')
+        }).catch(err => {
+            toast('预加载资源失败');
+        })
+    })
+
     const context = useContext(GameAppControllerContext);
     const [player_count, setPlayerCount] = createSignal<number>(last_player_count);
     const onSelect:SelectCallback = (eventKey, event) => {

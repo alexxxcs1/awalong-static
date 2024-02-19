@@ -9205,6 +9205,42 @@
       ]
     }
   ];
+  var preloadResource = () => {
+    const resources = Object.values(avatars).reduce((result, data) => {
+      if (data.asset) {
+        result.push(data.asset);
+      }
+      return result;
+    }, []);
+    const tmp = document.createElement("div");
+    tmp.setAttribute("style", "display:none;");
+    document.body.appendChild(tmp);
+    const load_promises = resources.map((r) => {
+      let resolver;
+      const promise = new Promise((resolve, reject) => {
+        resolver = (result) => {
+          if (result) {
+            resolve();
+          } else {
+            reject();
+          }
+        };
+      });
+      const img = document.createElement("img");
+      img.src = r;
+      img.onload = () => {
+        resolver(true);
+      };
+      img.onerror = () => {
+        resolver(false);
+      };
+      tmp.appendChild(img);
+      return promise;
+    });
+    return Promise.all(load_promises).finally(() => {
+      tmp.parentNode.removeChild(tmp);
+    });
+  };
 
   // src/utils/modal.tsx
   var Mask = styled.div({
@@ -9406,6 +9442,13 @@
       }
     } catch (error) {
     }
+    onMount(() => {
+      preloadResource().then(() => {
+        toast("\u9884\u52A0\u8F7D\u8D44\u6E90\u6210\u529F\uFF01");
+      }).catch((err) => {
+        toast("\u9884\u52A0\u8F7D\u8D44\u6E90\u5931\u8D25");
+      });
+    });
     const context2 = useContext(GameAppControllerContext);
     const [player_count, setPlayerCount] = createSignal(last_player_count);
     const onSelect = (eventKey, event) => {
