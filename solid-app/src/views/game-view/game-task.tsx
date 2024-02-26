@@ -107,7 +107,7 @@ export const GameTask:Component = () => {
             return;
         }
         if(index !== task_status().length) {
-            toast(`第${readable_index}轮投票尚未开始，当前第${task_status.length + 1}轮游戏！`)
+            toast(`第${readable_index}轮投票尚未开始，当前第${task_status().length + 1}轮游戏！`)
             return;
         };
         const task = tasks![index];

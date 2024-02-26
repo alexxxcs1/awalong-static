@@ -10338,7 +10338,7 @@
         return;
       }
       if (index !== task_status().length) {
-        toast(`\u7B2C${readable_index}\u8F6E\u6295\u7968\u5C1A\u672A\u5F00\u59CB\uFF0C\u5F53\u524D\u7B2C${task_status.length + 1}\u8F6E\u6E38\u620F\uFF01`);
+        toast(`\u7B2C${readable_index}\u8F6E\u6295\u7968\u5C1A\u672A\u5F00\u59CB\uFF0C\u5F53\u524D\u7B2C${task_status().length + 1}\u8F6E\u6E38\u620F\uFF01`);
         return;
       }
       ;
