@@ -65,15 +65,20 @@ const TaskResult = styled.div({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: '.1rem'
 })
 const TaskResultVote = styled.div<{success: boolean}>((props) => {
     const main_color = props.success ? '#198754' : '#dc3545';
     return {
-        width: '1rem',
-        height: '1rem',
+        width: '1.2rem',
+        height: '1.2rem',
         background: main_color,
-        margin: '.4rem',
-        border: '.2rem solid #333'
+        margin: '0.2rem .4rem',
+        border: '.2rem solid #333',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: ".8rem"
     }
 })
 type TaskStatus = {
@@ -180,11 +185,13 @@ export const GameTask:Component = () => {
         }
     });
 
-    
+    const game_over = createMemo(() => {
+        return result_content() !== void 0;
+    })
 
     return (
         <GameTaskContainer>
-            <Show when={result_content() !== void 0}>
+            <Show when={game_over()}>
                 <div class="result">
                     {result_content()}
                 </div>
@@ -201,7 +208,11 @@ export const GameTask:Component = () => {
                                     <TaskResult>
                                         <For each={task.status.votes}>
                                             {(vote_data) => (
-                                                <TaskResultVote success={vote_data.vote}/>
+                                                <TaskResultVote success={vote_data.vote}>
+                                                    <Show when={game_over()}>
+                                                        { vote_data.player.id }
+                                                    </Show>
+                                                </TaskResultVote>
                                             )}
                                         </For>
                                     </TaskResult>

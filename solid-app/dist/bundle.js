@@ -10301,16 +10301,21 @@
     width: "100%",
     display: "flex",
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    marginBottom: ".1rem"
   });
   var TaskResultVote = styled.div((props) => {
     const main_color = props.success ? "#198754" : "#dc3545";
     return {
-      width: "1rem",
-      height: "1rem",
+      width: "1.2rem",
+      height: "1.2rem",
       background: main_color,
-      margin: ".4rem",
-      border: ".2rem solid #333"
+      margin: "0.2rem .4rem",
+      border: ".2rem solid #333",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: ".8rem"
     };
   });
   var GameTask = () => {
@@ -10414,11 +10419,14 @@
         updateCampResult("villain");
       }
     });
+    const game_over = createMemo(() => {
+      return result_content() !== void 0;
+    });
     return createComponent(GameTaskContainer, {
       get children() {
         return [createComponent(Show, {
           get when() {
-            return result_content() !== void 0;
+            return game_over();
           },
           get children() {
             var _el$ = _tmpl$8();
@@ -10458,6 +10466,16 @@
                             children: (vote_data) => createComponent(TaskResultVote, {
                               get success() {
                                 return vote_data.vote;
+                              },
+                              get children() {
+                                return createComponent(Show, {
+                                  get when() {
+                                    return game_over();
+                                  },
+                                  get children() {
+                                    return vote_data.player.id;
+                                  }
+                                });
                               }
                             })
                           });
@@ -10873,7 +10891,7 @@
     const game_config = generateGameConfig(player_count());
     const [game_stage_store, setGameStage] = createStore2({
       config: game_config,
-      stage: "night",
+      stage: "task",
       updateStage: (stage) => {
         setGameStage(produce((prev) => {
           prev.stage = stage;
