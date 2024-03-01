@@ -10891,7 +10891,7 @@
     const game_config = generateGameConfig(player_count());
     const [game_stage_store, setGameStage] = createStore2({
       config: game_config,
-      stage: "task",
+      stage: "night",
       updateStage: (stage) => {
         setGameStage(produce((prev) => {
           prev.stage = stage;
