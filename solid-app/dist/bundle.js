@@ -10618,21 +10618,19 @@
       openModal((close) => {
         let [vote_succces, updateVoteSuccess] = createSignal(void 0);
         const onVote = (success) => {
-          if (player.type === "protagonist" && !success) {
-            toast("\u597D\u4EBA\u9635\u8425\u65E0\u6CD5\u6295\u51FA\u5931\u8D25\u7968\uFF01", {
-              timeout: 1e3
-            });
-            return;
-          }
           updateVoteSuccess(success);
         };
         const onSubmit = () => {
           if (vote_succces() === void 0)
             return;
           const status = [...vote_status()];
+          let vote_result = vote_succces();
+          if (player.type === "protagonist" && vote_result == false) {
+            vote_result = true;
+          }
           status.push({
             player,
-            vote: vote_succces()
+            vote: vote_result
           });
           updateVoteStatus(status);
           close();

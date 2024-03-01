@@ -361,18 +361,18 @@ const VoteSelector:Component<{
         openModal((close) => {
             let [vote_succces, updateVoteSuccess] = createSignal<boolean | void>(void 0);
             const onVote = (success: boolean) => {
-                if(player.type === 'protagonist' && !success) {
-                    toast('好人阵营无法投出失败票！', {timeout: 1000});
-                    return;
-                }
                 updateVoteSuccess(success);
             }
             const onSubmit = () => {
                 if(vote_succces() === void 0) return;
                 const status = [...vote_status()];
+                let vote_result = vote_succces();
+                if (player.type === 'protagonist' && vote_result == false) {
+                    vote_result = true;
+                }
                 status.push({
                     player: player,
-                    vote: vote_succces()!
+                    vote: vote_result!
                 })
                 updateVoteStatus(status);
                 close();
