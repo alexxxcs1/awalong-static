@@ -1,12 +1,17 @@
 import { createContext } from 'solid-js';
-import { Player, getPlayerTeam } from "../../utils/game";
-import { randomArray } from "../../utils/random.tools";
+import { Player, PlayerTeamMapType, getPlayerTeam } from "./game";
+import { randomArray } from "./random.tools";
+import { ExtendRule } from './extend';
 
 type StageType = 'night' | 'task'
 
-export const generateGameConfig = (player_count: number) => {
+export type GameConfig = PlayerTeamMapType & {
+    players: Array<Player>
+    tasks: Array<TaskRound>
+}
+export const generateGameConfig = (player_count: number):GameConfig => {
     const team = getPlayerTeam(player_count)!;
-    const player_team = randomArray(team.players);
+    const player_team = randomArray(team.avatars);
     const tasks = generateTasks(player_count);
     const _players = player_team.map<Player>((d, idx) => {
         return {
@@ -42,7 +47,6 @@ export const generateGameConfig = (player_count: number) => {
             nightInfo: night_info
         }
     });
-    
     return {
         ...team,
         players: players,
@@ -51,9 +55,11 @@ export const generateGameConfig = (player_count: number) => {
 }
 
 export type GameStageStore = {
-    config: ReturnType<typeof generateGameConfig>
+    config: GameConfig
     stage: StageType,
+    extendRule?: ExtendRule | void
     updateStage: (stage: StageType) => void
+    updateConfig: (config: GameConfig) => void
 }
 
 export const GameStageContext = createContext<GameStageStore>()

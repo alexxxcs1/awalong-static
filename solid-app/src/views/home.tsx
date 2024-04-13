@@ -1,6 +1,6 @@
 import { Button, Dropdown } from "solid-bootstrap";
 import { SelectCallback } from "solid-bootstrap-core";
-import { Component, For, createEffect, createMemo, createResource, createSignal, onMount, useContext } from "solid-js";
+import { Component, For, Show, createEffect, createMemo, createResource, createSignal, onMount, useContext } from "solid-js";
 import { styled } from "solid-styled-components";
 import { toast } from "../utils/toast";
 import { PLAYER_TEAM_MAP, getPlayerTeam, preloadResource } from "../utils/game";
@@ -39,19 +39,8 @@ const BuggtonGroup = styled.div({
         marginBottom: 0,
     }
 });
-const PlayerCountContainer = styled.div({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '1rem',
-    '.count': {
-        margin: '0 .5rem',
-        fontSize: '1.5rem',
-        color: '#198754'
-    }
-})
 
-const StartGameDropdownContainer = styled(Dropdown)({
+const GameDropdownContainer = styled(Dropdown)({
     width: '100%',
 });
 
@@ -88,6 +77,11 @@ const CampContainer = styled.div<{type: 'protagonist' | 'villain'}>((props) => {
     }
 });
 
+const ExtendRules = styled.div({
+    width: '100%',
+    background: '#f1f1f1',
+});
+
 export const HomeView:Component = () => {
     let last_player_count:number = 5;
     try {
@@ -109,6 +103,7 @@ export const HomeView:Component = () => {
 
     const context = useContext(GameAppControllerContext);
     const [player_count, setPlayerCount] = createSignal<number>(last_player_count);
+    
     const onSelect:SelectCallback = (eventKey, event) => {
         if(!eventKey) {
             toast("请选择正确的游玩人数！")
@@ -124,10 +119,14 @@ export const HomeView:Component = () => {
             
         }
     })
-    const team = createMemo(() => {
+    const team_config_data = createMemo(() => {
         const count = player_count();
-        const team_data =  getPlayerTeam(count);
-        return team_data?.players || ([] as NonNullable<typeof team_data>['players']);
+        const team_data =  getPlayerTeam(count)!;
+        return team_data;
+    });
+    const team = createMemo(() => {
+        const c = team_config_data();
+        return c?.avatars || ([] as NonNullable<typeof c>['avatars']);
     });
 
     const protagonist_team = createMemo(() => {
@@ -136,8 +135,31 @@ export const HomeView:Component = () => {
     const villaint_team = createMemo(() => {
         return team().filter(d => d.type === 'villain')
     });
+    
+    const [extend_code, setExtendCode] = createSignal<string>('');
+    createEffect(() => {
+        const extend_rules = team_config_data().extend_codes || [];
+        if(extend_rules.length) {
+            setExtendCode('');
+        }
+    })
+    const extend_mode_name = createMemo(() => {
+        const extend_rules = team_config_data().extend_codes || [];
+        const current_code = extend_code()
+        const match = extend_rules.find(d => d.code === current_code);
+        if (match) return match.name;
+        return '基础模式'
+    })
+    const onSelecedExtendCode:SelectCallback = (code) => {
+        setExtendCode(code || '');
+    }
+
     const onStartGame = () => {
-        context?.updateCurrent(`game_stage?player_count=${player_count()}`);
+        const querys = [`player_count=${player_count()}`];
+        if (!!extend_code()) {
+            querys.push(`extend_code=${extend_code()}`)
+        }
+        context?.updateCurrent(`game_stage?${querys.join('&')}`);
     }
 
     return (
@@ -146,15 +168,27 @@ export const HomeView:Component = () => {
                 Oh My Avalon
             </TitleContainer>
             <BuggtonGroup>
-                <PlayerCountContainer class="player-count">当前游戏人数: <b class="count">{player_count()}</b>人</PlayerCountContainer>
-                <StartGameDropdownContainer onSelect={onSelect}>
-                    <Dropdown.Toggle style={{width: '100%'}} variant="secondary">选择游戏人数</Dropdown.Toggle>
+                <GameDropdownContainer onSelect={onSelect}>
+                    <Dropdown.Toggle style={{width: '100%'}} variant="secondary">游戏人数: <b class="count">{player_count()}</b>人</Dropdown.Toggle>
                     <Dropdown.Menu style={{width: '100%'}} align={'start'}>
                         <For each={PLAYER_TEAM_MAP}>
                             {(item) => <Dropdown.Item active={player_count() === item.count} eventKey={item.count} >{item.count}人</Dropdown.Item>}
                         </For>
                     </Dropdown.Menu>
-                </StartGameDropdownContainer>
+                </GameDropdownContainer>
+                <Show when={!!team_config_data().extend_codes?.length}>
+                    <GameDropdownContainer onSelect={onSelecedExtendCode}>
+                        <ExtendRules>
+                            <Dropdown.Toggle style={{width: '100%'}} variant="secondary">{extend_mode_name()}</Dropdown.Toggle>
+                            <Dropdown.Menu style={{width: '100%'}} align={'start'}>
+                                <Dropdown.Item active={extend_code() === ''} eventKey={''} >基础模式</Dropdown.Item>
+                                <For each={team_config_data().extend_codes}>
+                                    {(item) => <Dropdown.Item active={extend_code() === item.code} eventKey={item.code} >{item.name}</Dropdown.Item>}
+                                </For>
+                            </Dropdown.Menu>
+                        </ExtendRules>
+                    </GameDropdownContainer>
+                </Show>
                 <Button style={{width: '100%'}} variant='primary' onclick={onStartGame}>开始游戏</Button>
             </BuggtonGroup>
             

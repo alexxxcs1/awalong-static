@@ -9116,15 +9116,15 @@
       type: "villain",
       skill: "\u83AB\u5FB7\u96F7\u5FB7\u662F\u65E0\u6CD5\u88AB\u6885\u6797\u770B\u5230\u7684\u7EA2\u8272\u9635\u8425\u8001\u5927"
     },
-    lancelotBlue: {
-      name: "\u5170\u65AF\u6D1B\u7279(\u7EFF\u8272\u9635\u8425)",
+    lancelotGrren: {
+      name: "\u5170\u65AF\u6D1B\u7279",
       code: "lancelot_green",
       asset: "./assets/avatars/lancelot_green.png",
       type: "protagonist",
       skill: "\u5170\u65AF\u6D1B\u7279 \u662F\u53CC\u751F\u89D2\u8272\uFF0C\u7531\u4F60\u548C\u53E6\u5916\u4E00\u4F4D\u73A9\u5BB6\u626E\u6F14\uFF0C\u975E\u62D3\u5C55\u6A21\u5F0F\u4E0B\uFF0C\u4F60\u4EEC\u80FD\u591F\u4E92\u76F8\u770B\u89C1"
     },
     lancelotRed: {
-      name: "\u5170\u65AF\u6D1B\u7279(\u7EA2\u8272\u9635\u8425)",
+      name: "\u5170\u65AF\u6D1B\u7279",
       code: "lancelot_red",
       asset: "./assets/avatars/lancelot_red.png",
       type: "villain",
@@ -9147,7 +9147,7 @@
   var PLAYER_TEAM_MAP = [
     {
       count: 5,
-      players: [
+      avatars: [
         avatars.merlin,
         avatars.pacificville,
         avatars.loyal,
@@ -9157,7 +9157,7 @@
     },
     {
       count: 6,
-      players: [
+      avatars: [
         avatars.merlin,
         avatars.pacificville,
         avatars.loyal,
@@ -9168,7 +9168,7 @@
     },
     {
       count: 7,
-      players: [
+      avatars: [
         avatars.merlin,
         avatars.pacificville,
         avatars.loyal,
@@ -9180,7 +9180,7 @@
     },
     {
       count: 8,
-      players: [
+      avatars: [
         avatars.merlin,
         avatars.pacificville,
         avatars.loyal,
@@ -9193,7 +9193,7 @@
     },
     {
       count: 9,
-      players: [
+      avatars: [
         avatars.merlin,
         avatars.pacificville,
         avatars.loyal,
@@ -9207,7 +9207,7 @@
     },
     {
       count: 10,
-      players: [
+      avatars: [
         avatars.merlin,
         avatars.pacificville,
         avatars.loyal,
@@ -9222,14 +9222,15 @@
     },
     {
       count: 11,
-      players: [
+      extend_codes: [{ name: "\u5170\u65AF\u6D1B\u7279\u5173\u952E\u5C40\u968F\u673A\u8F6E\u6362", code: "lancelot#change_only_key_round" }, { name: "\u5170\u65AF\u6D1B\u7279\u6BCF\u8F6E\u968F\u673A\u8F6E\u6362", code: "lancelot#change_every_round" }],
+      avatars: [
         avatars.merlin,
         avatars.pacificville,
         avatars.loyal,
         avatars.loyal,
         avatars.loyal,
         avatars.loyal,
-        avatars.lancelotBlue,
+        avatars.lancelotGrren,
         avatars.morgana,
         avatars.assassin,
         avatars.mordred,
@@ -9238,14 +9239,15 @@
     },
     {
       count: 12,
-      players: [
+      extend_codes: [{ name: "\u5170\u65AF\u6D1B\u7279\u5173\u952E\u5C40\u968F\u673A\u8F6E\u6362", code: "lancelot#change_only_key_round" }, { name: "\u5170\u65AF\u6D1B\u7279\u6BCF\u8F6E\u968F\u673A\u8F6E\u6362", code: "lancelot#change_every_round" }],
+      avatars: [
         avatars.merlin,
         avatars.pacificville,
         avatars.loyal,
         avatars.loyal,
         avatars.loyal,
         avatars.loyal,
-        avatars.lancelotBlue,
+        avatars.lancelotGrren,
         avatars.morgana,
         avatars.assassin,
         avatars.mordred,
@@ -9438,18 +9440,7 @@
       marginBottom: 0
     }
   });
-  var PlayerCountContainer = styled.div({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "1rem",
-    ".count": {
-      margin: "0 .5rem",
-      fontSize: "1.5rem",
-      color: "#198754"
-    }
-  });
-  var StartGameDropdownContainer = styled(Dropdown$1)({
+  var GameDropdownContainer = styled(Dropdown$1)({
     width: "100%"
   });
   var AvatarsContainer = styled.div({
@@ -9481,6 +9472,10 @@
         background: "#fff"
       }
     };
+  });
+  var ExtendRules = styled.div({
+    width: "100%",
+    background: "#f1f1f1"
   });
   var HomeView = () => {
     let last_player_count = 5;
@@ -9514,10 +9509,14 @@
       } catch (error) {
       }
     });
-    const team = createMemo(() => {
+    const team_config_data = createMemo(() => {
       const count = player_count();
       const team_data = getPlayerTeam(count);
-      return team_data?.players || [];
+      return team_data;
+    });
+    const team = createMemo(() => {
+      const c2 = team_config_data();
+      return c2?.avatars || [];
     });
     const protagonist_team = createMemo(() => {
       return team().filter((d) => d.type === "protagonist");
@@ -9525,8 +9524,30 @@
     const villaint_team = createMemo(() => {
       return team().filter((d) => d.type === "villain");
     });
+    const [extend_code, setExtendCode] = createSignal("");
+    createEffect(() => {
+      const extend_rules = team_config_data().extend_codes || [];
+      if (extend_rules.length) {
+        setExtendCode("");
+      }
+    });
+    const extend_mode_name = createMemo(() => {
+      const extend_rules = team_config_data().extend_codes || [];
+      const current_code = extend_code();
+      const match = extend_rules.find((d) => d.code === current_code);
+      if (match)
+        return match.name;
+      return "\u57FA\u7840\u6A21\u5F0F";
+    });
+    const onSelecedExtendCode = (code) => {
+      setExtendCode(code || "");
+    };
     const onStartGame = () => {
-      context2?.updateCurrent(`game_stage?player_count=${player_count()}`);
+      const querys = [`player_count=${player_count()}`];
+      if (!!extend_code()) {
+        querys.push(`extend_code=${extend_code()}`);
+      }
+      context2?.updateCurrent(`game_stage?${querys.join("&")}`);
     };
     return createComponent(GameHomeContainer, {
       get children() {
@@ -9534,16 +9555,7 @@
           children: "Oh My Avalon"
         }), createComponent(BuggtonGroup, {
           get children() {
-            return [createComponent(PlayerCountContainer, {
-              "class": "player-count",
-              get children() {
-                return ["\u5F53\u524D\u6E38\u620F\u4EBA\u6570: ", (() => {
-                  var _el$ = _tmpl$6();
-                  insert(_el$, player_count);
-                  return _el$;
-                })(), "\u4EBA"];
-              }
-            }), createComponent(StartGameDropdownContainer, {
+            return [createComponent(GameDropdownContainer, {
               onSelect,
               get children() {
                 return [createComponent(Dropdown$1.Toggle, {
@@ -9551,7 +9563,13 @@
                     width: "100%"
                   },
                   variant: "secondary",
-                  children: "\u9009\u62E9\u6E38\u620F\u4EBA\u6570"
+                  get children() {
+                    return ["\u6E38\u620F\u4EBA\u6570: ", (() => {
+                      var _el$ = _tmpl$6();
+                      insert(_el$, player_count);
+                      return _el$;
+                    })(), "\u4EBA"];
+                  }
                 }), createComponent(Dropdown$1.Menu, {
                   style: {
                     width: "100%"
@@ -9574,6 +9592,59 @@
                     });
                   }
                 })];
+              }
+            }), createComponent(Show, {
+              get when() {
+                return !!team_config_data().extend_codes?.length;
+              },
+              get children() {
+                return createComponent(GameDropdownContainer, {
+                  onSelect: onSelecedExtendCode,
+                  get children() {
+                    return createComponent(ExtendRules, {
+                      get children() {
+                        return [createComponent(Dropdown$1.Toggle, {
+                          style: {
+                            width: "100%"
+                          },
+                          variant: "secondary",
+                          get children() {
+                            return extend_mode_name();
+                          }
+                        }), createComponent(Dropdown$1.Menu, {
+                          style: {
+                            width: "100%"
+                          },
+                          align: "start",
+                          get children() {
+                            return [createComponent(Dropdown$1.Item, {
+                              get active() {
+                                return extend_code() === "";
+                              },
+                              eventKey: "",
+                              children: "\u57FA\u7840\u6A21\u5F0F"
+                            }), createComponent(For, {
+                              get each() {
+                                return team_config_data().extend_codes;
+                              },
+                              children: (item) => createComponent(Dropdown$1.Item, {
+                                get active() {
+                                  return extend_code() === item.code;
+                                },
+                                get eventKey() {
+                                  return item.code;
+                                },
+                                get children() {
+                                  return item.name;
+                                }
+                              })
+                            })];
+                          }
+                        })];
+                      }
+                    });
+                  }
+                });
               }
             }), createComponent(Button$12, {
               style: {
@@ -9967,10 +10038,10 @@
     return result;
   };
 
-  // src/views/game-view/stage.util.ts
+  // src/utils/stage.tools.ts
   var generateGameConfig = (player_count) => {
     const team = getPlayerTeam(player_count);
-    const player_team = randomArray(team.players);
+    const player_team = randomArray(team.avatars);
     const tasks = generateTasks(player_count);
     const _players = player_team.map((d, idx) => {
       return {
@@ -10089,7 +10160,7 @@
       justifyContent: "center"
     }
   });
-  var GameNight = () => {
+  var GameNight = (props) => {
     const context2 = useContext(GameStageContext);
     const players = context2.config.players;
     const [ready_player, updateReadyPlayer] = createSignal([], {
@@ -10110,10 +10181,7 @@
     });
     const readyPlaye = () => {
       if (all_ready()) {
-        toast("\u6E38\u620F\u5F00\u59CB\uFF01");
-        context2?.updateStage("task");
-      } else {
-        toast("\u6240\u6709\u73A9\u5BB6\u5DF2\u786E\u8BA4\u8EAB\u4EFD\u540E\u518D\u5F00\u59CB\u6E38\u620F\uFF01");
+        props.onDone();
       }
     };
     return createComponent(GameNightContainer, {
@@ -10146,7 +10214,7 @@
               width: "60%"
             },
             onclick: readyPlaye,
-            children: "\u51C6\u5907\u5B8C\u6BD5"
+            children: "\u8EAB\u4EFD\u786E\u8BA4\u5B8C\u6BD5"
           }));
           return _el$3;
         })()];
@@ -10208,8 +10276,6 @@
       equals: (prev, next) => prev === next
     });
     const [reunlock, updateReunlock] = createSignal(0);
-    const context2 = useContext(GameStageContext);
-    const players = context2.config.players;
     createEffect(on(locked, (v) => {
       if (v) {
         props.onReady();
@@ -10462,11 +10528,43 @@
         };
       });
     });
-    createEffect(() => {
+    const game_has_base_result = createMemo(() => {
       const rounds_data = rounds();
       const successed = rounds_data.filter((d) => d.success === true);
       const failed = rounds_data.filter((d) => d.success === false);
       if (successed.length >= 3) {
+        return "protagonist";
+      } else if (failed.length >= 3) {
+        return "villain";
+      }
+      return void 0;
+    });
+    createEffect(() => {
+      const currentRound = task_status().length;
+      const base_result = game_has_base_result();
+      if (currentRound === 0)
+        return;
+      if (!!base_result)
+        return;
+      untrack(() => {
+        context2?.extendRule?.onEveryRoundEnd?.(currentRound, context2.config, (c2) => {
+          context2.updateConfig(c2);
+        });
+      });
+    });
+    createEffect(() => {
+      const currentRound = task_status().length + 1;
+      untrack(() => {
+        context2?.extendRule?.onEveryRoundBegin?.(currentRound, context2.config, (c2) => {
+          context2.updateConfig(c2);
+        });
+      });
+    });
+    createEffect(() => {
+      const base_result = game_has_base_result();
+      if (!base_result)
+        return;
+      if (base_result === "protagonist") {
         openModal((close) => {
           const onAssassinKillResult = (success_kill) => {
             if (!success_kill) {
@@ -10484,7 +10582,7 @@
           });
         });
         toast("\u7EFF\u8272\u9635\u8425\u53D6\u5F97\u4F18\u52BF\uFF01\u7EA2\u8272\u9635\u8425\u523A\u5BA2\u53EF\u4EE5\u5F00\u59CB\u6307\u8BA4\u6885\u6797\uFF01");
-      } else if (failed.length >= 3) {
+      } else {
         toast("\u7EA2\u8272\u9635\u8425\u80DC\u5229\uFF01");
         updateCampResult("villain");
       }
@@ -10935,6 +11033,105 @@
   };
   delegateEvents(["click"]);
 
+  // src/utils/extend.tsx
+  var getExtendRule = (code) => {
+    return EXTEND_RULES[code];
+  };
+  var lancelot_night_extend = (config, updateConfig) => {
+    const players = config.players;
+    const new_players = JSON.parse(JSON.stringify(players));
+    for (const player of new_players) {
+      if (player.code.startsWith("lancelot")) {
+        player.nightInfo = [];
+      }
+    }
+    updateConfig({
+      ...config,
+      players: new_players
+    });
+  };
+  var EXTEND_RULES = {
+    "lancelot#change_only_key_round": {
+      onNight: lancelot_night_extend,
+      onEveryRoundBegin: (currentRound, config, updateConfig) => {
+        console.log("begin");
+        let key_round = config.tasks.findIndex((d) => d.failCount > 1);
+        if (key_round < 0) {
+          key_round = 3;
+        }
+        const key_round_readable = key_round + 1;
+        if (currentRound !== key_round_readable) {
+          return;
+        }
+        const change_card = [true, true, true, false, false];
+        const [result] = randomArray(change_card);
+        if (result) {
+          const players = config.players.map((p2) => {
+            if (p2.code.startsWith("lancelot")) {
+              const other_lancelot = Object.values(avatars).find((ap) => ap.code.startsWith("lancelot") && ap.code !== p2.code);
+              console.log("aaa", p2, other_lancelot);
+              return {
+                ...p2,
+                ...other_lancelot
+              };
+            }
+            return p2;
+          });
+          updateConfig({
+            ...config,
+            players
+          });
+        }
+        openModal(ReviewContainer);
+      }
+    },
+    "lancelot#change_every_round": {
+      onNight: lancelot_night_extend,
+      onEveryRoundEnd: (lastRound, config, updateConfig) => {
+        const change_card = [true, true, true, false, false];
+        const [result] = randomArray(change_card);
+        if (result) {
+          toast("\u8BF7\u6CE8\u610F\uFF0C\u5170\u65AF\u7279\u6D1B\u8EAB\u4EFD\u53D1\u751F\u4E86\u8F6C\u6362\uFF0C\u5168\u4F53\u73A9\u5BB6\u91CD\u65B0\u786E\u8BA4\u8EAB\u4EFD\uFF01");
+          const players = config.players.map((p2) => {
+            if (p2.code.startsWith("lancelot")) {
+              const other_lancelot = Object.values(avatars).find((ap) => ap.code.startsWith("lancelot") && ap.code !== p2.code);
+              console.log("aaa", p2, other_lancelot);
+              return {
+                ...p2,
+                ...other_lancelot
+              };
+            }
+            return p2;
+          });
+          updateConfig({
+            ...config,
+            players
+          });
+          openModal(ReviewContainer);
+        } else {
+          toast("\u5170\u65AF\u7279\u6D1B\u8EAB\u4EFD\u672A\u53D1\u751F\u8F6C\u6362\uFF01");
+        }
+      }
+    }
+  };
+  var Container = styled.div({
+    width: "80%",
+    background: "#fff",
+    padding: "3rem 0"
+  });
+  var ReviewContainer = (close) => {
+    const onDone = () => {
+      close();
+    };
+    return createComponent(Container, {
+      get children() {
+        return createComponent(GameNight, {
+          onDone
+        });
+      }
+    });
+  };
+
   // src/views/game-view/game.tsx
   var GameStageContainer = styled.div({
     width: "100%",
@@ -10958,13 +11155,33 @@
       }
       return player_num;
     });
-    const game_config = generateGameConfig(player_count());
-    const [game_stage_store, setGameStage] = createStore2({
-      config: game_config,
+    const extend_rule = createMemo(() => {
+      const extend_code = store?.query?.extend_code;
+      if (!extend_code) {
+        return;
+      }
+      const rule = getExtendRule(extend_code);
+      return rule;
+    });
+    let config = generateGameConfig(player_count());
+    const extend = extend_rule();
+    if (extend?.onNight) {
+      extend.onNight(config, (new_config) => {
+        config = new_config;
+      });
+    }
+    const [game_stage_store, setGameStageStore] = createStore2({
+      config,
       stage: "night",
+      extendRule: extend_rule(),
       updateStage: (stage) => {
-        setGameStage(produce((prev) => {
+        setGameStageStore(produce((prev) => {
           prev.stage = stage;
+        }));
+      },
+      updateConfig: (config2) => {
+        setGameStageStore(produce((prev) => {
+          prev.config = config2;
         }));
       }
     });
@@ -10972,6 +11189,10 @@
       if (key === "return_home") {
         store?.updateCurrent("game_home");
       }
+    };
+    const onNightEnd = () => {
+      toast("\u6E38\u620F\u5F00\u59CB\uFF01");
+      game_stage_store.updateStage("task");
     };
     return createComponent(GameStageContext.Provider, {
       value: game_stage_store,
@@ -11006,7 +11227,9 @@
                     return game_stage_store.stage === "night";
                   },
                   get children() {
-                    return createComponent(GameNight, {});
+                    return createComponent(GameNight, {
+                      onDone: onNightEnd
+                    });
                   }
                 }), createComponent(Match, {
                   get when() {
@@ -11078,7 +11301,7 @@
   };
 
   // src/index.tsx
-  var Container = styled.div({
+  var Container2 = styled.div({
     width: "100%",
     height: "100%"
   });
@@ -11093,7 +11316,7 @@
     }
   });
   var App = () => {
-    return createComponent(Container, {
+    return createComponent(Container2, {
       get children() {
         return [createComponent(GlobalStyled, {}), createComponent(GameAppController, {})];
       }

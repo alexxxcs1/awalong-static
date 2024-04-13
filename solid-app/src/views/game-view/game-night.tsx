@@ -1,6 +1,6 @@
 import { Component, For, Show, createEffect, createMemo, createSignal, on, useContext } from "solid-js";
 import { styled } from "solid-styled-components";
-import { GameStageContext } from "./stage.util";
+import { GameStageContext } from "../../utils/stage.tools";
 import { AvatarCard } from "../../components/avatar.card";
 import { openModal } from "../../utils/modal";
 import { Button } from "solid-bootstrap";
@@ -34,7 +34,7 @@ const GameNightContainer = styled.div({
         justifyContent: 'center',
     }
 })
-export const GameNight:Component = () => {
+export const GameNight:Component<{onDone: () => void}> = (props) => {
     const context = useContext(GameStageContext);
     const players = context!.config.players;
     const [ready_player, updateReadyPlayer] = createSignal<Array<number>>([], {name: 'players_readystatus'});
@@ -53,10 +53,7 @@ export const GameNight:Component = () => {
     })
     const readyPlaye = () => {
         if(all_ready()) {
-            toast('游戏开始！');
-            context?.updateStage('task');
-        }else{
-            toast('所有玩家已确认身份后再开始游戏！')
+            props.onDone();
         }
     }
     return (
@@ -70,7 +67,7 @@ export const GameNight:Component = () => {
                 </For>
             </div>
             <div class="actions">
-                <Button variant={all_ready() ? 'success' : 'secondary'} style={{width: '60%'}} onclick={readyPlaye}>准备完毕</Button>
+                <Button variant={all_ready() ? 'success' : 'secondary'} style={{width: '60%'}} onclick={readyPlaye}>身份确认完毕</Button>
             </div>
         </GameNightContainer>
     )
@@ -135,8 +132,6 @@ const InfoContainer = styled.div({
 const NightPlayer:Component<NightPlayerProps> = (props) => {
     const [locked, updateLock] = createSignal(false, {equals: (prev, next) => prev === next});
     const [reunlock, updateReunlock] = createSignal(0);
-    const context = useContext(GameStageContext);
-    const players = context!.config.players;
     createEffect(on(locked, (v) => {
         if(v) {
             props.onReady();

@@ -1,14 +1,14 @@
-import { Component, Match, Switch, createContext, createMemo, useContext } from "solid-js";
+import { Component, Match, Switch, createMemo, useContext } from "solid-js";
 import { GameAppControllerContext } from "../../game.controller";
 import { toast } from "../../utils/toast";
-import { randomArray } from "../../utils/random.tools";
 import { styled } from "solid-styled-components";
 import { createStore, produce } from "solid-js/store";
 import { GameNight } from "./game-night";
-import { generateGameConfig, GameStageContext, GameStageStore } from "./stage.util";
+import { generateGameConfig, GameStageContext, GameStageStore } from "../../utils/stage.tools";
 import { Dropdown } from "solid-bootstrap";
 import { SelectCallback } from "solid-bootstrap-core";
 import { GameTask } from "./game-task";
+import { getExtendRule } from "../../utils/extend";
 
 const GameStageContainer = styled.div({
     width: '100%',
@@ -34,13 +34,33 @@ export const GameStageControllerView:Component = () => {
         }
         return player_num
     });
-    const game_config = generateGameConfig(player_count());
-    const [game_stage_store, setGameStage] = createStore<GameStageStore>({
-        config: game_config,
+    const extend_rule = createMemo(() => {
+        const extend_code = store?.query?.extend_code;
+        if(!extend_code) {
+            return;
+        }
+        const rule = getExtendRule(extend_code)
+        return rule
+    });
+    let config = generateGameConfig(player_count());
+    const extend = extend_rule();
+    if(extend?.onNight) {
+        extend.onNight(config, (new_config) => {
+            config = new_config;
+        });
+    }
+    const [game_stage_store, setGameStageStore] = createStore<GameStageStore>({
+        config: config,
         stage: 'night',
+        extendRule: extend_rule(),
         updateStage: (stage) => {
-            setGameStage(produce(prev => {
+            setGameStageStore(produce(prev => {
                 prev.stage = stage;
+            }))
+        },
+        updateConfig: (config) => {
+            setGameStageStore(produce(prev => {
+                prev.config = config
             }))
         }
     });
@@ -49,6 +69,10 @@ export const GameStageControllerView:Component = () => {
         if(key === 'return_home') {
             store?.updateCurrent('game_home');
         }
+    }
+    const onNightEnd = () => {
+        toast('游戏开始！');
+        game_stage_store.updateStage('task');
     }
     
     return (
@@ -64,7 +88,7 @@ export const GameStageControllerView:Component = () => {
             <GameStageContainer>
                 <Switch>
                     <Match when={game_stage_store.stage === 'night'}>
-                        <GameNight />
+                        <GameNight onDone={onNightEnd}/>
                     </Match>
                     <Match when={game_stage_store.stage === 'task'}>
                         <GameTask />

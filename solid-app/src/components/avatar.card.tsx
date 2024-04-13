@@ -1,7 +1,7 @@
 import { Component, JSXElement, Show, createMemo } from "solid-js";
-import { AvatarType } from "../utils/game";
 import { styled } from "solid-styled-components";
 import { Card } from "solid-bootstrap";
+import { AvatarType } from "../utils/avatars";
 
 const CardContent = styled.div<{type: AvatarType['type']}>((props) => {
     const main_color = props.type === 'protagonist' ? '#198754' : '#dc3545';

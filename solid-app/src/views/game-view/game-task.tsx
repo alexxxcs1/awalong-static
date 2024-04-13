@@ -1,6 +1,6 @@
-import { Component, For, Show, createEffect, createMemo, createSignal, on, useContext } from "solid-js"
+import { Component, For, Show, createEffect, createMemo, createSignal, on, untrack, useContext } from "solid-js"
 import { styled } from "solid-styled-components"
-import { GameStageContext, generateGameConfig } from "./stage.util";
+import { GameStageContext, generateGameConfig } from "../../utils/stage.tools";
 import { Button } from "solid-bootstrap";
 import { openModal } from "../../utils/modal";
 import { toast } from "../../utils/toast";
@@ -158,14 +158,44 @@ export const GameTask:Component = () => {
             }
         })
     });
-    
-    createEffect(() => {
+
+    const game_has_base_result = createMemo(() => {
         const rounds_data = rounds();
         const successed = rounds_data.filter(d => d.success === true);
         const failed = rounds_data.filter(d => d.success === false);
-        
-        
         if(successed.length >= 3) {
+            return 'protagonist';
+        }else if (failed.length >= 3){
+            return 'villain'
+        }
+        return void 0;
+    })
+
+    createEffect(() => {
+        const currentRound = task_status().length;
+        const base_result = game_has_base_result();
+        if (currentRound === 0) return;
+        if (!!base_result) return;
+        untrack(() => {
+            context?.extendRule?.onEveryRoundEnd?.(currentRound, context.config, (c) => {
+                context.updateConfig(c);
+            });
+        });
+    });
+
+    createEffect(() => {
+        const currentRound = task_status().length + 1;
+        untrack(() => {
+            context?.extendRule?.onEveryRoundBegin?.(currentRound, context.config, (c) => {
+                context.updateConfig(c);
+            });
+        });
+    })
+
+    createEffect(() => {
+        const base_result = game_has_base_result();
+        if(!base_result) return;
+        if(base_result === 'protagonist') {
             openModal((close) => {
                 const onAssassinKillResult = (success_kill: boolean) => {
                     if(!success_kill) {
@@ -180,7 +210,7 @@ export const GameTask:Component = () => {
                 )
             });
             toast('绿色阵营取得优势！红色阵营刺客可以开始指认梅林！');
-        } else if(failed.length >= 3) {
+        } else {
             toast('红色阵营胜利！');
             updateCampResult('villain')
         }

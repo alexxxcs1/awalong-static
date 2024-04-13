@@ -14,18 +14,19 @@ export type Player = AvatarType & {
     id: number,
     nightInfo: Array<Player>
 }
-type PlayerTeamMapType = {
+export type PlayerTeamMapType = {
     count: number,
-    players: Array<AvatarType>
-    extra?: {
-        type: string,
+    name?: string,
+    extend_codes?: Array<{
         name: string,
-    }
+        code: string,
+    }>,
+    avatars: Array<AvatarType>
 }
 export const PLAYER_TEAM_MAP:Array<PlayerTeamMapType> = [
     {
         count: 5,
-        players: [
+        avatars: [
             avatars.merlin,
             avatars.pacificville,
             avatars.loyal,
@@ -35,7 +36,7 @@ export const PLAYER_TEAM_MAP:Array<PlayerTeamMapType> = [
     },
     {
         count: 6,
-        players: [
+        avatars: [
             avatars.merlin,
             avatars.pacificville,
             avatars.loyal,
@@ -46,7 +47,7 @@ export const PLAYER_TEAM_MAP:Array<PlayerTeamMapType> = [
     },
     {
         count: 7,
-        players: [
+        avatars: [
             avatars.merlin,
             avatars.pacificville,
             avatars.loyal,
@@ -58,7 +59,7 @@ export const PLAYER_TEAM_MAP:Array<PlayerTeamMapType> = [
     },
     {
         count: 8,
-        players: [
+        avatars: [
             avatars.merlin,
             avatars.pacificville,
             avatars.loyal,
@@ -71,7 +72,7 @@ export const PLAYER_TEAM_MAP:Array<PlayerTeamMapType> = [
     },
     {
         count: 9,
-        players: [
+        avatars: [
             avatars.merlin,
             avatars.pacificville,
             avatars.loyal,
@@ -85,7 +86,7 @@ export const PLAYER_TEAM_MAP:Array<PlayerTeamMapType> = [
     },
     {
         count: 10,
-        players: [
+        avatars: [
             avatars.merlin,
             avatars.pacificville,
             avatars.loyal,
@@ -100,14 +101,15 @@ export const PLAYER_TEAM_MAP:Array<PlayerTeamMapType> = [
     },
     {
         count: 11,
-        players: [
+        extend_codes: [{ name: '兰斯洛特关键局随机轮换', code: 'lancelot#change_only_key_round' }, {name: '兰斯洛特每轮随机轮换', code: 'lancelot#change_every_round'}],
+        avatars: [
             avatars.merlin,
             avatars.pacificville,
             avatars.loyal,
             avatars.loyal,
             avatars.loyal,
             avatars.loyal,
-            avatars.lancelotBlue,
+            avatars.lancelotGrren,
             avatars.morgana,
             avatars.assassin,
             avatars.mordred,
@@ -116,14 +118,15 @@ export const PLAYER_TEAM_MAP:Array<PlayerTeamMapType> = [
     },
     {
         count: 12,
-        players: [
+        extend_codes: [{ name: '兰斯洛特关键局随机轮换', code: 'lancelot#change_only_key_round' }, {name: '兰斯洛特每轮随机轮换', code: 'lancelot#change_every_round'}],
+        avatars: [
             avatars.merlin,
             avatars.pacificville,
             avatars.loyal,
             avatars.loyal,
             avatars.loyal,
             avatars.loyal,
-            avatars.lancelotBlue,
+            avatars.lancelotGrren,
             avatars.morgana,
             avatars.assassin,
             avatars.mordred,

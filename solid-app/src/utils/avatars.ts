@@ -5,7 +5,7 @@ export type AvatarType = {
     type: 'protagonist' | 'villain',
     skill?: string
 }
-export type AvatarsCodes = 'merlin' | 'pacificville' | 'loyal' | 'morgana' | 'assassin' | 'oberon' | 'minions' | 'mordred' | 'lancelotBlue' | 'lancelotRed'
+export type AvatarsCodes = 'merlin' | 'pacificville' | 'loyal' | 'morgana' | 'assassin' | 'oberon' | 'minions' | 'mordred' | 'lancelotGrren' | 'lancelotRed'
 export const avatars:Record<AvatarsCodes, AvatarType> = {
     merlin: {
         name: '梅林',
@@ -61,15 +61,15 @@ export const avatars:Record<AvatarsCodes, AvatarType> = {
         type: 'villain',
         skill: '莫德雷德是无法被梅林看到的红色阵营老大'
     },
-    lancelotBlue: {
-        name: '兰斯洛特(绿色阵营)',
+    lancelotGrren: {
+        name: '兰斯洛特',
         code: 'lancelot_green',
         asset: './assets/avatars/lancelot_green.png',
         type: 'protagonist',
         skill: '兰斯洛特 是双生角色，由你和另外一位玩家扮演，非拓展模式下，你们能够互相看见'
     },
     lancelotRed: {
-        name: '兰斯洛特(红色阵营)',
+        name: '兰斯洛特',
         code: 'lancelot_red',
         asset: './assets/avatars/lancelot_red.png',
         type: 'villain',
