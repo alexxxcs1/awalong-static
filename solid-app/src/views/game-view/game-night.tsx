@@ -1,11 +1,11 @@
 import { Component, For, Show, createEffect, createMemo, createSignal, on, useContext } from "solid-js";
 import { styled } from "solid-styled-components";
 import { GameStageContext } from "./stage.util";
-import { AvatarType } from "../../utils/game";
 import { AvatarCard } from "../../components/avatar.card";
 import { openModal } from "../../utils/modal";
 import { Button } from "solid-bootstrap";
 import { toast } from "../../utils/toast";
+import { Player } from "../../utils/game";
 
 const GameNightContainer = styled.div({
     width: '100%',
@@ -109,7 +109,7 @@ const NightPlayerContainer = styled.div<{locked?: boolean}>((props) => {
 });
 type NightPlayerProps = {
     idx: number,
-    info: AvatarType,
+    info: Player,
     onReady: () => void
     onUnReady: () => void
 }
@@ -157,23 +157,6 @@ const NightPlayer:Component<NightPlayerProps> = (props) => {
             return;
         }
         openModal((close) => {
-            const villain = players.filter(d => d.type === 'villain');
-            const villain_without_oberon = villain.filter(d => d.code !== 'oberon');
-            const villain_without_mordred = villain.filter(d => d.code !== 'mordred');
-            const merlin_morgana = players.filter(d => ['merlin','morgana'].includes(d.code));
-            let night_info:typeof players = [];
-            if(props.info.type === 'villain') {
-                night_info = villain_without_oberon;
-            }
-            if(props.info.code === 'merlin') {
-                night_info = villain_without_mordred;
-            }
-            if(props.info.code === 'pacificville') {
-                night_info = merlin_morgana;
-            }
-            if(props.info.code === 'oberon') {
-                night_info = [];
-            }
             const extend = () => {
                 const onclose = () => {
                     updateLock(true);
@@ -181,10 +164,10 @@ const NightPlayer:Component<NightPlayerProps> = (props) => {
                 }
                 return (
                     <div>
-                        <Show when={!!night_info.length}>
+                        <Show when={!!props.info.nightInfo.length}>
                             <InfoContainer>
                                 你看到的信息: 
-                                <For each={night_info}>
+                                <For each={props.info.nightInfo}>
                                     {(i) => (
                                         <span class="id-card">{i.id}</span>
                                     )}

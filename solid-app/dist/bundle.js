@@ -9060,30 +9060,19 @@
     }, opt?.timeout || 3e3);
   };
 
-  // src/utils/game.ts
-  var getPlayerTeam = (num) => {
-    const team = PLAYER_TEAM_MAP.find((d) => d.count === num);
-    return team;
-  };
-  var getCampName = (type) => {
-    if (type === "protagonist")
-      return "\u597D\u4EBA\u9635\u8425";
-    if (type === "villain")
-      return "\u53CD\u6D3E\u9635\u8425";
-    return "";
-  };
+  // src/utils/avatars.ts
   var avatars = {
     merlin: {
       name: "\u6885\u6797",
       code: "merlin",
-      asset: "./assets/avatars/Hero_gM.png",
+      asset: "./assets/avatars/merlin_green.png",
       type: "protagonist",
-      skill: "\u6885\u6797\u53EF\u4EE5\u770B\u5230\u53CD\u6D3E\u9635\u8425\u7684\u73A9\u5BB6(\u57289-10\u4EBA\u6E38\u620F\u4E2D\uFF0C\u53CD\u6D3E\u9635\u8425\u7684\u83AB\u5FB7\u96F7\u5FB7\u9664\u5916)\uFF0C\u9690\u85CF\u4F60\u81EA\u5DF1\u7684\u8EAB\u4EFD\uFF0C\u5982\u679C\u88AB\u53CD\u6D3E\u9635\u8425\u731C\u4E2D\uFF0C\u53CD\u6D3E\u523A\u5BA2\u53EF\u4EE5\u76F4\u63A5\u6307\u8BA4\u4F60\u7ED3\u675F\u6E38\u620F)"
+      skill: "\u6885\u6797\u53EF\u4EE5\u770B\u5230\u7EA2\u8272\u9635\u8425\u7684\u73A9\u5BB6(\u57289-10\u4EBA\u6E38\u620F\u4E2D\uFF0C\u7EA2\u8272\u9635\u8425\u7684\u83AB\u5FB7\u96F7\u5FB7\u9664\u5916)\uFF0C\u9690\u85CF\u4F60\u81EA\u5DF1\u7684\u8EAB\u4EFD\uFF0C\u5982\u679C\u88AB\u7EA2\u8272\u9635\u8425\u731C\u4E2D\uFF0C\u53CD\u6D3E\u523A\u5BA2\u53EF\u4EE5\u76F4\u63A5\u6307\u8BA4\u4F60\u7ED3\u675F\u6E38\u620F)"
     },
     pacificville: {
       name: "\u6D3E\u897F\u7EF4\u5C14",
       code: "pacificville",
-      asset: "./assets/avatars/Hero_gP.png",
+      asset: "./assets/avatars/pacificville_green.png",
       type: "protagonist",
       skill: "\u6D3E\u897F\u7EF4\u5C14\u53EF\u4EE5\u770B\u5230 \u6885\u6797 \u548C \u83AB\u7518\u5A1C\uFF0C\u4F46\u662F\u65E0\u6CD5\u5206\u8FA8\u5177\u4F53\u5BF9\u5E94\u7684\u4EBA"
     },
@@ -9091,42 +9080,69 @@
       name: "\u5FE0\u81E3",
       code: "loyal",
       type: "protagonist",
-      asset: "./assets/avatars/Hero_gz.png"
+      asset: "./assets/avatars/loyal_green.png"
     },
     morgana: {
       name: "\u83AB\u7518\u5A1C",
       code: "morgana",
-      asset: "./assets/avatars/Hero_bN.png",
+      asset: "./assets/avatars/morgana_red.png",
       type: "villain",
-      skill: "\u83AB\u7518\u5A1C\u53EF\u4EE5\u88AB \u597D\u4EBA\u9635\u8425 \u7684 \u6D3E\u897F\u7EF4\u5C14 \u770B\u5230\uFF0C\u4F46\u662F \u6D3E\u897F\u7EF4\u5C14 \u4E0D\u77E5\u9053\u4F60\u7684\u9635\u8425(\u65E0\u6CD5\u5206\u8FA8\u4F60\u662F\u83AB\u7518\u5A1C\u8FD8\u662F\u6885\u6797)"
+      skill: "\u83AB\u7518\u5A1C\u53EF\u4EE5\u88AB \u7EFF\u8272\u9635\u8425 \u7684 \u6D3E\u897F\u7EF4\u5C14 \u770B\u5230\uFF0C\u4F46\u662F \u6D3E\u897F\u7EF4\u5C14 \u4E0D\u77E5\u9053\u4F60\u7684\u9635\u8425(\u65E0\u6CD5\u5206\u8FA8\u4F60\u662F\u83AB\u7518\u5A1C\u8FD8\u662F\u6885\u6797)"
     },
     assassin: {
       name: "\u523A\u5BA2",
       code: "assassin",
-      asset: "./assets/avatars/Hero_bA.png",
+      asset: "./assets/avatars/assassin_red.png",
       type: "villain",
-      skill: "\u523A\u5BA2\u53EF\u4EE5\u5728\u4EFB\u4F55\u65F6\u5019\u523A\u6740\u4E00\u4F4D\u73A9\u5BB6\uFF0C\u5982\u679C\u8BE5\u73A9\u5BB6\u662F\u6885\u6797\uFF0C\u5219\u6E38\u620F\u7ED3\u675F\uFF0C\u53CD\u6D3E\u9635\u8425\u80DC\u5229\uFF0C\u53CD\u4E4B\u597D\u4EBA\u9635\u8425\u80DC\u5229"
+      skill: "\u523A\u5BA2\u53EF\u4EE5\u5728\u4EFB\u4F55\u65F6\u5019\u523A\u6740\u4E00\u4F4D\u73A9\u5BB6\uFF0C\u5982\u679C\u8BE5\u73A9\u5BB6\u662F\u6885\u6797\uFF0C\u5219\u6E38\u620F\u7ED3\u675F\uFF0C\u7EA2\u8272\u9635\u8425\u80DC\u5229\uFF0C\u53CD\u4E4B\u7EFF\u8272\u9635\u8425\u80DC\u5229"
     },
     oberon: {
       name: "\u5965\u4F2F\u4F26",
       code: "oberon",
-      asset: "./assets/avatars/Hero_bO.png",
+      asset: "./assets/avatars/oberon_red.png",
       type: "villain",
-      skill: "\u5965\u4F2F\u4F26\u65E0\u6CD5\u88AB\u53CD\u6D3E\u9635\u8425\u7684\u961F\u53CB\u770B\u89C1\uFF0C\u4E5F\u65E0\u6CD5\u770B\u89C1\u53CD\u6D3E\u9635\u8425\u7684\u961F\u53CB\uFF0C\u4F46\u662F\u80FD\u88AB\u6885\u6797\u770B\u89C1"
+      skill: "\u5965\u4F2F\u4F26\u65E0\u6CD5\u88AB\u7EA2\u8272\u9635\u8425\u7684\u961F\u53CB\u770B\u89C1\uFF0C\u4E5F\u65E0\u6CD5\u770B\u89C1\u7EA2\u8272\u9635\u8425\u7684\u961F\u53CB\uFF0C\u4F46\u662F\u80FD\u88AB\u6885\u6797\u770B\u89C1"
     },
     minions: {
       name: "\u722A\u7259",
       code: "minions",
-      asset: "./assets/avatars/Hero_bm.png",
+      asset: "./assets/avatars/minions_red.png",
       type: "villain"
     },
     mordred: {
       name: "\u83AB\u5FB7\u96F7\u5FB7",
       code: "mordred",
-      asset: "./assets/avatars/Hero_bK.png",
+      asset: "./assets/avatars/mordred_red.png",
       type: "villain",
-      skill: "\u83AB\u5FB7\u96F7\u5FB7\u662F\u65E0\u6CD5\u88AB\u6885\u6797\u770B\u5230\u7684\u53CD\u6D3E\u9635\u8425\u8001\u5927"
+      skill: "\u83AB\u5FB7\u96F7\u5FB7\u662F\u65E0\u6CD5\u88AB\u6885\u6797\u770B\u5230\u7684\u7EA2\u8272\u9635\u8425\u8001\u5927"
+    },
+    lancelotBlue: {
+      name: "\u5170\u65AF\u6D1B\u7279(\u7EFF\u8272\u9635\u8425)",
+      code: "lancelot_green",
+      asset: "./assets/avatars/lancelot_green.png",
+      type: "protagonist",
+      skill: "\u5170\u65AF\u6D1B\u7279 \u662F\u53CC\u751F\u89D2\u8272\uFF0C\u7531\u4F60\u548C\u53E6\u5916\u4E00\u4F4D\u73A9\u5BB6\u626E\u6F14\uFF0C\u975E\u62D3\u5C55\u6A21\u5F0F\u4E0B\uFF0C\u4F60\u4EEC\u80FD\u591F\u4E92\u76F8\u770B\u89C1"
+    },
+    lancelotRed: {
+      name: "\u5170\u65AF\u6D1B\u7279(\u7EA2\u8272\u9635\u8425)",
+      code: "lancelot_red",
+      asset: "./assets/avatars/lancelot_red.png",
+      type: "villain",
+      skill: "\u5170\u65AF\u6D1B\u7279 \u662F\u53CC\u751F\u89D2\u8272\uFF0C\u7531\u4F60\u548C\u53E6\u5916\u4E00\u4F4D\u73A9\u5BB6\u626E\u6F14\uFF0C\u975E\u62D3\u5C55\u6A21\u5F0F\u4E0B\uFF0C\u4F60\u4EEC\u80FD\u591F\u4E92\u76F8\u770B\u89C1"
     }
+  };
+
+  // src/utils/game.ts
+  var getPlayerTeam = (num) => {
+    const team = PLAYER_TEAM_MAP.find((d) => d.count === num);
+    return team;
+  };
+  var getCampName = (type) => {
+    if (type === "protagonist")
+      return "\u7EFF\u8272\u9635\u8425";
+    if (type === "villain")
+      return "\u7EA2\u8272\u9635\u8425";
+    return "";
   };
   var PLAYER_TEAM_MAP = [
     {
@@ -9202,6 +9218,39 @@
         avatars.assassin,
         avatars.mordred,
         avatars.oberon
+      ]
+    },
+    {
+      count: 11,
+      players: [
+        avatars.merlin,
+        avatars.pacificville,
+        avatars.loyal,
+        avatars.loyal,
+        avatars.loyal,
+        avatars.loyal,
+        avatars.lancelotBlue,
+        avatars.morgana,
+        avatars.assassin,
+        avatars.mordred,
+        avatars.lancelotRed
+      ]
+    },
+    {
+      count: 12,
+      players: [
+        avatars.merlin,
+        avatars.pacificville,
+        avatars.loyal,
+        avatars.loyal,
+        avatars.loyal,
+        avatars.loyal,
+        avatars.lancelotBlue,
+        avatars.morgana,
+        avatars.assassin,
+        avatars.mordred,
+        avatars.oberon,
+        avatars.lancelotRed
       ]
     }
   ];
@@ -9304,9 +9353,9 @@
     const camp = createMemo(() => {
       const type = props.data.type;
       if (type === "protagonist")
-        return "\u597D\u4EBA\u9635\u8425";
+        return "\u7EFF\u8272\u9635\u8425";
       if (type === "villain")
-        return "\u53CD\u6D3E\u9635\u8425";
+        return "\u7EA2\u8272\u9635\u8425";
     });
     return createComponent(CardContent, {
       get type() {
@@ -9356,9 +9405,9 @@
 
   // src/views/home.tsx
   var _tmpl$6 = /* @__PURE__ */ template(`<b class=count>`);
-  var _tmpl$23 = /* @__PURE__ */ template(`<div class=title>\u597D\u4EBA\u9635\u8425`);
+  var _tmpl$23 = /* @__PURE__ */ template(`<div class=title>\u7EFF\u8272\u9635\u8425`);
   var _tmpl$32 = /* @__PURE__ */ template(`<div class=avatars>`);
-  var _tmpl$42 = /* @__PURE__ */ template(`<div class=title>\u53CD\u6D3E\u9635\u8425`);
+  var _tmpl$42 = /* @__PURE__ */ template(`<div class=title>\u7EA2\u8272\u9635\u8425`);
   var _tmpl$52 = /* @__PURE__ */ template(`<div class=foot>`);
   var _tmpl$62 = /* @__PURE__ */ template(`<span class=name>`);
   var GameHomeContainer = styled.div({
@@ -9923,20 +9972,51 @@
     const team = getPlayerTeam(player_count);
     const player_team = randomArray(team.players);
     const tasks = generateTasks(player_count);
+    const _players = player_team.map((d, idx) => {
+      return {
+        ...d,
+        id: idx + 1,
+        nightInfo: []
+      };
+    });
+    const players = _players.map((player) => {
+      const villain = _players.filter((d) => d.type === "villain");
+      const villain_without_oberon = villain.filter((d) => d.code !== "oberon");
+      const villain_without_mordred = villain.filter((d) => d.code !== "mordred");
+      const merlin_morgana = _players.filter((d) => ["merlin", "morgana"].includes(d.code));
+      let night_info = [];
+      if (player.type === "villain") {
+        night_info = villain_without_oberon;
+      }
+      if (player.code === "merlin") {
+        night_info = villain_without_mordred;
+      }
+      if (player.code === "pacificville") {
+        night_info = merlin_morgana;
+      }
+      if (player.code === "oberon") {
+        night_info = [];
+      }
+      if (player.code.startsWith("lancelot")) {
+        const other = _players.find((d) => d.code.startsWith("lancelot") && d.code !== player.code);
+        night_info = [other];
+      }
+      return {
+        ...player,
+        nightInfo: night_info
+      };
+    });
     return {
       ...team,
-      players: player_team.map((d, idx) => {
-        return {
-          ...d,
-          id: idx + 1
-        };
-      }),
+      players,
       tasks
     };
   };
   var GameStageContext = createContext();
   var getTaskPlayersMap = (player_count) => {
-    if (player_count >= 8) {
+    if (player_count >= 10) {
+      return [3, 4, 5, 6, 6];
+    } else if (player_count >= 8) {
       return [3, 4, 4, 5, 5];
     } else if (player_count === 7) {
       return [2, 3, 3, 4, 4];
@@ -9951,10 +10031,15 @@
     const task = Array.from({ length: 5 }).reduce((result, _, index) => {
       const readable_round = index + 1;
       let failVoteCount = 1;
-      if (special && readable_round === 3) {
-        failVoteCount = 2;
-      }
       let task_player_count_map = getTaskPlayersMap(player_count);
+      if (special && task_player_count_map) {
+        const last_vote_num = [...task_player_count_map].pop();
+        const firstMaxVoteIndex = task_player_count_map.findIndex((d) => d === last_vote_num);
+        const firstMaxViteIndexReadable = firstMaxVoteIndex + 1;
+        if (firstMaxViteIndexReadable === readable_round) {
+          failVoteCount = 2;
+        }
+      }
       if (!task_player_count_map) {
         return result;
       }
@@ -10145,23 +10230,6 @@
         return;
       }
       openModal((close) => {
-        const villain = players.filter((d) => d.type === "villain");
-        const villain_without_oberon = villain.filter((d) => d.code !== "oberon");
-        const villain_without_mordred = villain.filter((d) => d.code !== "mordred");
-        const merlin_morgana = players.filter((d) => ["merlin", "morgana"].includes(d.code));
-        let night_info = [];
-        if (props.info.type === "villain") {
-          night_info = villain_without_oberon;
-        }
-        if (props.info.code === "merlin") {
-          night_info = villain_without_mordred;
-        }
-        if (props.info.code === "pacificville") {
-          night_info = merlin_morgana;
-        }
-        if (props.info.code === "oberon") {
-          night_info = [];
-        }
         const extend = () => {
           const onclose = () => {
             updateLock(true);
@@ -10171,13 +10239,15 @@
             var _el$4 = _tmpl$43();
             insert(_el$4, createComponent(Show, {
               get when() {
-                return !!night_info.length;
+                return !!props.info.nightInfo.length;
               },
               get children() {
                 return createComponent(InfoContainer, {
                   get children() {
                     return ["\u4F60\u770B\u5230\u7684\u4FE1\u606F: ", createComponent(For, {
-                      each: night_info,
+                      get each() {
+                        return props.info.nightInfo;
+                      },
                       children: (i2) => (() => {
                         var _el$5 = _tmpl$53();
                         insert(_el$5, () => i2.id);
@@ -10413,9 +10483,9 @@
             onUpdateResult: onAssassinKillResult
           });
         });
-        toast("\u597D\u4EBA\u9635\u8425\u53D6\u5F97\u4F18\u52BF\uFF01\u53CD\u6D3E\u9635\u8425\u523A\u5BA2\u53EF\u4EE5\u5F00\u59CB\u6307\u8BA4\u6885\u6797\uFF01");
+        toast("\u7EFF\u8272\u9635\u8425\u53D6\u5F97\u4F18\u52BF\uFF01\u7EA2\u8272\u9635\u8425\u523A\u5BA2\u53EF\u4EE5\u5F00\u59CB\u6307\u8BA4\u6885\u6797\uFF01");
       } else if (failed.length >= 3) {
-        toast("\u53CD\u6D3E\u9635\u8425\u80DC\u5229\uFF01");
+        toast("\u7EA2\u8272\u9635\u8425\u80DC\u5229\uFF01");
         updateCampResult("villain");
       }
     });
@@ -10817,10 +10887,10 @@
       } else {
         const target = players()[selected_taget];
         if (target.code !== "merlin") {
-          toast("\u523A\u6740\u6885\u6797\u5931\u8D25\uFF0C\u597D\u4EBA\u9635\u8425\u80DC\u5229\uFF01");
+          toast("\u523A\u6740\u6885\u6797\u5931\u8D25\uFF0C\u7EFF\u8272\u9635\u8425\u80DC\u5229\uFF01");
           props.onUpdateResult(false);
         } else {
-          toast("\u523A\u6740\u6885\u6797\u6210\u529F\uFF01\u53CD\u6D3E\u9635\u8425\u80DC\u5229\uFF01");
+          toast("\u523A\u6740\u6885\u6797\u6210\u529F\uFF01\u7EA2\u8272\u9635\u8425\u80DC\u5229\uFF01");
           props.onUpdateResult(true);
         }
       }

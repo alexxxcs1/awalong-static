@@ -5,7 +5,8 @@ import { Button } from "solid-bootstrap";
 import { openModal } from "../../utils/modal";
 import { toast } from "../../utils/toast";
 import { randomArray } from "../../utils/random.tools";
-import { AvatarType, getCampName } from "../../utils/game";
+import { getCampName } from "../../utils/game";
+import { AvatarType } from "../../utils/avatars";
 
 const GameTaskContainer = styled.div({
     width: '100%',
@@ -178,9 +179,9 @@ export const GameTask:Component = () => {
                     <AssassinModal players={context?.config.players!} onUpdateResult={onAssassinKillResult}/>
                 )
             });
-            toast('好人阵营取得优势！反派阵营刺客可以开始指认梅林！');
+            toast('绿色阵营取得优势！红色阵营刺客可以开始指认梅林！');
         } else if(failed.length >= 3) {
-            toast('反派阵营胜利！');
+            toast('红色阵营胜利！');
             updateCampResult('villain')
         }
     });
@@ -520,10 +521,10 @@ const AssassinModal:Component<AssassinModalProps> = (props) => {
         }else{
             const target = players()[selected_taget];
             if(target.code !== 'merlin') {
-                toast('刺杀梅林失败，好人阵营胜利！');
+                toast('刺杀梅林失败，绿色阵营胜利！');
                 props.onUpdateResult(false);
             }else{
-                toast('刺杀梅林成功！反派阵营胜利！');
+                toast('刺杀梅林成功！红色阵营胜利！');
                 props.onUpdateResult(true);
             }
         }

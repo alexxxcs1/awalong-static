@@ -33,8 +33,8 @@ export const AvatarCard:Component<{data: AvatarType, extend?: () => JSXElement}>
     });
     const camp = createMemo(() => {
         const type = props.data.type;
-        if(type === 'protagonist') return '好人阵营'
-        if(type === 'villain') return '反派阵营'
+        if(type === 'protagonist') return '绿色阵营'
+        if(type === 'villain') return '红色阵营'
     })
     return (
         <CardContent type={props.data.type}>

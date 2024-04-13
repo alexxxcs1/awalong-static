@@ -3,10 +3,11 @@ import { SelectCallback } from "solid-bootstrap-core";
 import { Component, For, createEffect, createMemo, createResource, createSignal, onMount, useContext } from "solid-js";
 import { styled } from "solid-styled-components";
 import { toast } from "../utils/toast";
-import { AvatarType, PLAYER_TEAM_MAP, getPlayerTeam, preloadResource } from "../utils/game";
+import { PLAYER_TEAM_MAP, getPlayerTeam, preloadResource } from "../utils/game";
 import { openModal } from "../utils/modal";
 import { AvatarCard } from "../components/avatar.card";
 import { GameAppControllerContext } from "../game.controller";
+import { AvatarType } from "../utils/avatars";
 
 const GameHomeContainer = styled.div({
     width: '100%',
@@ -134,7 +135,7 @@ export const HomeView:Component = () => {
     });
     const villaint_team = createMemo(() => {
         return team().filter(d => d.type === 'villain')
-    })
+    });
     const onStartGame = () => {
         context?.updateCurrent(`game_stage?player_count=${player_count()}`);
     }
@@ -156,9 +157,10 @@ export const HomeView:Component = () => {
                 </StartGameDropdownContainer>
                 <Button style={{width: '100%'}} variant='primary' onclick={onStartGame}>开始游戏</Button>
             </BuggtonGroup>
+            
             <AvatarsContainer>
                 <CampContainer type='protagonist'>
-                    <div class="title">好人阵营</div>
+                    <div class="title">绿色阵营</div>
                     <div class="avatars">
                         <For each={protagonist_team()}>
                             {(item) => (
@@ -168,7 +170,7 @@ export const HomeView:Component = () => {
                     </div>
                 </CampContainer>
                 <CampContainer type='villain'>
-                    <div class="title">反派阵营</div>
+                    <div class="title">红色阵营</div>
                     <div class="avatars">
                         <For each={villaint_team()}>
                                 {(item) => (

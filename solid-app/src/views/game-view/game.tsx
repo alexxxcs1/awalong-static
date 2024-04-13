@@ -1,6 +1,5 @@
 import { Component, Match, Switch, createContext, createMemo, useContext } from "solid-js";
 import { GameAppControllerContext } from "../../game.controller";
-import { getPlayerTeam } from "../../utils/game";
 import { toast } from "../../utils/toast";
 import { randomArray } from "../../utils/random.tools";
 import { styled } from "solid-styled-components";
@@ -36,7 +35,6 @@ export const GameStageControllerView:Component = () => {
         return player_num
     });
     const game_config = generateGameConfig(player_count());
-    
     const [game_stage_store, setGameStage] = createStore<GameStageStore>({
         config: game_config,
         stage: 'night',
@@ -44,7 +42,7 @@ export const GameStageControllerView:Component = () => {
             setGameStage(produce(prev => {
                 prev.stage = stage;
             }))
-        },
+        }
     });
 
     const onMenuClick:SelectCallback = (key) => {
