@@ -9486,6 +9486,14 @@
       }
     } catch (error) {
     }
+    let last_extend_code = "";
+    try {
+      const last_last_extend_string = localStorage.getItem("LAST_EXTEND_CODE");
+      if (last_last_extend_string) {
+        last_extend_code = last_last_extend_string;
+      }
+    } catch (error) {
+    }
     onMount(() => {
       preloadResource().then(() => {
         toast("\u9884\u52A0\u8F7D\u8D44\u6E90\u6210\u529F\uFF01");
@@ -9524,10 +9532,18 @@
     const villaint_team = createMemo(() => {
       return team().filter((d) => d.type === "villain");
     });
-    const [extend_code, setExtendCode] = createSignal("");
+    const [extend_code, setExtendCode] = createSignal(last_extend_code);
+    createEffect(() => {
+      const code = extend_code();
+      console.log("c", code);
+      try {
+        localStorage.setItem("LAST_EXTEND_CODE", code);
+      } catch (error) {
+      }
+    });
     createEffect(() => {
       const extend_rules = team_config_data().extend_codes || [];
-      if (extend_rules.length) {
+      if (!extend_rules.length) {
         setExtendCode("");
       }
     });
@@ -11119,15 +11135,24 @@
     background: "#fff",
     padding: "3rem 0"
   });
+  var Title = styled.div({
+    fontSize: "2rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: "1rem"
+  });
   var ReviewContainer = (close) => {
     const onDone = () => {
       close();
     };
     return createComponent(Container, {
       get children() {
-        return createComponent(GameNight, {
+        return [createComponent(Title, {
+          children: "\u5170\u65AF\u7279\u6D1B\u62D3\u5C55\u9636\u6BB5"
+        }), createComponent(GameNight, {
           onDone
-        });
+        })];
       }
     });
   };
@@ -11172,7 +11197,7 @@
     }
     const [game_stage_store, setGameStageStore] = createStore2({
       config,
-      stage: "night",
+      stage: "task",
       extendRule: extend_rule(),
       updateStage: (stage) => {
         setGameStageStore(produce((prev) => {

@@ -92,6 +92,16 @@ export const HomeView:Component = () => {
     } catch (error) {
         
     }
+    
+    let last_extend_code:string = '';
+    try {
+        const last_last_extend_string = localStorage.getItem('LAST_EXTEND_CODE');
+        if (last_last_extend_string) {
+            last_extend_code = last_last_extend_string;
+        }
+    } catch (error) {
+        
+    }
 
     onMount(() => {
         preloadResource().then(() => {
@@ -136,13 +146,23 @@ export const HomeView:Component = () => {
         return team().filter(d => d.type === 'villain')
     });
     
-    const [extend_code, setExtendCode] = createSignal<string>('');
+    const [extend_code, setExtendCode] = createSignal<string>(last_extend_code);
+    createEffect(() => {
+        const code = extend_code();
+        console.log("c", code)
+        try {
+            localStorage.setItem('LAST_EXTEND_CODE', code);
+        } catch (error) {
+            
+        }
+    })
     createEffect(() => {
         const extend_rules = team_config_data().extend_codes || [];
-        if(extend_rules.length) {
+        if(!extend_rules.length) {
             setExtendCode('');
         }
     })
+    
     const extend_mode_name = createMemo(() => {
         const extend_rules = team_config_data().extend_codes || [];
         const current_code = extend_code()

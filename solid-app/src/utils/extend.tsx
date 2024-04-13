@@ -100,12 +100,20 @@ const Container = styled.div({
     background: '#fff',
     padding: '3rem 0'
 })
+const Title = styled.div({
+    fontSize: '2rem',
+    display:'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '1rem'
+})
 const ReviewContainer:Component<any> = (close) => {
     const onDone = () => {
         close();
     }
     return (
         <Container>
+            <Title>兰斯特洛拓展阶段</Title>
             <GameNight onDone={onDone}/>
         </Container>
     )

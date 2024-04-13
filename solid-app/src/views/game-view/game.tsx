@@ -51,7 +51,7 @@ export const GameStageControllerView:Component = () => {
     }
     const [game_stage_store, setGameStageStore] = createStore<GameStageStore>({
         config: config,
-        stage: 'night',
+        stage: 'task',
         extendRule: extend_rule(),
         updateStage: (stage) => {
             setGameStageStore(produce(prev => {
