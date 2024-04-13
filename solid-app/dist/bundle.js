@@ -10471,6 +10471,7 @@
     };
   });
   var GameTask = () => {
+    const owner = getOwner();
     const context2 = useContext(GameStageContext);
     const [task_status, updateTaskStatus] = createSignal([]);
     const [success_camp, updateCampResult] = createSignal();
@@ -10482,7 +10483,24 @@
         return `\u6E38\u620F\u5DF2\u7ED3\u675F\uFF01${success_camp_name}\u53D6\u5F97\u80DC\u5229`;
       }
     });
-    const startVote = (index) => {
+    const beginHookAction = createMemo(() => {
+      const currentRound = task_status().length + 1;
+      let isProcessed = false;
+      return async () => {
+        if (isProcessed)
+          return;
+        await runWithOwner(owner, async () => {
+          const response = context2?.extendRule?.onEveryRoundBegin?.(currentRound, context2.config, (c2) => {
+            context2.updateConfig(c2);
+          });
+          if (response) {
+            await response;
+          }
+        });
+        isProcessed = true;
+      };
+    });
+    const startVote = async (index) => {
       const result_content_data = result_content();
       if (result_content_data) {
         toast(result_content_data);
@@ -10500,6 +10518,7 @@
       }
       ;
       const task = tasks[index];
+      await beginHookAction()();
       openModal((close) => {
         const onConfirm = (votes) => {
           const state = [...task_status()];
@@ -10564,14 +10583,6 @@
         return;
       untrack(() => {
         context2?.extendRule?.onEveryRoundEnd?.(currentRound, context2.config, (c2) => {
-          context2.updateConfig(c2);
-        });
-      });
-    });
-    createEffect(() => {
-      const currentRound = task_status().length + 1;
-      untrack(() => {
-        context2?.extendRule?.onEveryRoundBegin?.(currentRound, context2.config, (c2) => {
           context2.updateConfig(c2);
         });
       });
@@ -11070,7 +11081,6 @@
     "lancelot#change_only_key_round": {
       onNight: lancelot_night_extend,
       onEveryRoundBegin: (currentRound, config, updateConfig) => {
-        console.log("begin");
         let key_round = config.tasks.findIndex((d) => d.failCount > 1);
         if (key_round < 0) {
           key_round = 3;
@@ -11085,7 +11095,6 @@
           const players = config.players.map((p2) => {
             if (p2.code.startsWith("lancelot")) {
               const other_lancelot = Object.values(avatars).find((ap) => ap.code.startsWith("lancelot") && ap.code !== p2.code);
-              console.log("aaa", p2, other_lancelot);
               return {
                 ...p2,
                 ...other_lancelot
@@ -11098,20 +11107,36 @@
             players
           });
         }
-        openModal(ReviewContainer);
+        return new Promise((resolve) => {
+          openModal((close) => {
+            const onClose = () => {
+              resolve();
+              close();
+            };
+            return createComponent(ReviewContainer, {
+              close: onClose
+            });
+          });
+        });
       }
     },
     "lancelot#change_every_round": {
-      onNight: lancelot_night_extend,
-      onEveryRoundEnd: (lastRound, config, updateConfig) => {
-        const change_card = [true, true, true, false, false];
-        const [result] = randomArray(change_card);
+      onNight: (config, updateConfig) => {
+        lancelot_night_extend(config, (c2) => {
+          updateConfig({
+            ...c2,
+            round_change_card: randomArray([true, true, true, false, false])
+          });
+        });
+      },
+      onEveryRoundEnd: (current, config, updateConfig) => {
+        console.log(config["round_change_card"]);
+        const result = config["round_change_card"]?.[current - 1];
         if (result) {
           toast("\u8BF7\u6CE8\u610F\uFF0C\u5170\u65AF\u7279\u6D1B\u8EAB\u4EFD\u53D1\u751F\u4E86\u8F6C\u6362\uFF0C\u5168\u4F53\u73A9\u5BB6\u91CD\u65B0\u786E\u8BA4\u8EAB\u4EFD\uFF01");
           const players = config.players.map((p2) => {
             if (p2.code.startsWith("lancelot")) {
               const other_lancelot = Object.values(avatars).find((ap) => ap.code.startsWith("lancelot") && ap.code !== p2.code);
-              console.log("aaa", p2, other_lancelot);
               return {
                 ...p2,
                 ...other_lancelot
@@ -11123,7 +11148,14 @@
             ...config,
             players
           });
-          openModal(ReviewContainer);
+          openModal((close) => {
+            const onClose = () => {
+              close();
+            };
+            return createComponent(ReviewContainer, {
+              close: onClose
+            });
+          });
         } else {
           toast("\u5170\u65AF\u7279\u6D1B\u8EAB\u4EFD\u672A\u53D1\u751F\u8F6C\u6362\uFF01");
         }
@@ -11142,9 +11174,9 @@
     justifyContent: "center",
     marginBottom: "1rem"
   });
-  var ReviewContainer = (close) => {
+  var ReviewContainer = (props) => {
     const onDone = () => {
-      close();
+      props.close();
     };
     return createComponent(Container, {
       get children() {
@@ -11197,7 +11229,7 @@
     }
     const [game_stage_store, setGameStageStore] = createStore2({
       config,
-      stage: "task",
+      stage: "night",
       extendRule: extend_rule(),
       updateStage: (stage) => {
         setGameStageStore(produce((prev) => {

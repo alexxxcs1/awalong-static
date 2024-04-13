@@ -3,13 +3,13 @@ import { GameNight } from "../views/game-view/game-night";
 import { avatars } from "./avatars";
 import { openModal } from "./modal";
 import { randomArray } from "./random.tools";
-import { GameConfig } from "./stage.tools"
-import { Component } from "solid-js";
+import { GameConfig, GameStageContext } from "./stage.tools"
+import { Component, useContext } from "solid-js";
 import { toast } from "./toast";
 
 export type ExtendRule = {
     onNight?:(config: GameConfig, updateConfig: (config: GameConfig) => void) => void;
-    onEveryRoundBegin?: (currentRound: number, config: GameConfig, updateConfig: (config: GameConfig) => void)=> void;
+    onEveryRoundBegin?: (currentRound: number, config: GameConfig, updateConfig: (config: GameConfig) => void)=> Promise<void> | void;
     onEveryRoundEnd?: (lastRound: number, config: GameConfig, updateConfig: (config: GameConfig) => void)=> void;
 }
 export const getExtendRule = (code: string):ExtendRule | void => {
@@ -34,7 +34,6 @@ const EXTEND_RULES:Record<string, ExtendRule> = {
     'lancelot#change_only_key_round': {
         onNight: lancelot_night_extend,
         onEveryRoundBegin: (currentRound, config, updateConfig) => {
-            console.log("begin")
             let key_round = config.tasks.findIndex(d => d.failCount > 1);
             if (key_round < 0) {
                 key_round = 3;
@@ -49,7 +48,6 @@ const EXTEND_RULES:Record<string, ExtendRule> = {
                 const players = config.players.map(p => {
                     if(p.code.startsWith('lancelot')) {
                         const other_lancelot = Object.values(avatars).find(ap => (ap.code.startsWith('lancelot') && ap.code !== p.code));
-                        console.log("aaa", p, other_lancelot);
                         return {
                             ...p,
                             ...other_lancelot,
@@ -62,20 +60,37 @@ const EXTEND_RULES:Record<string, ExtendRule> = {
                     players: players,
                 });
             }
-            openModal(ReviewContainer);
+            return new Promise(resolve => {
+                openModal((close) => {
+                    const onClose = () => {
+                        resolve()
+                        close()
+                    }
+                    return (
+                        <ReviewContainer close={onClose}></ReviewContainer>
+                    )
+                });
+            });
         }
     },
     'lancelot#change_every_round': {
-        onNight: lancelot_night_extend,
-        onEveryRoundEnd: (lastRound, config, updateConfig) => {
-            const change_card = [true, true, true, false, false];
-            const [result] = randomArray(change_card)!;
+        onNight: (config, updateConfig) => {
+            lancelot_night_extend(config, (c) => {
+                
+                updateConfig({
+                    ...c,
+                    round_change_card: randomArray([true, true, true, false, false])
+                });
+            });
+        },
+        onEveryRoundEnd: (current, config, updateConfig) => {
+            console.log(config['round_change_card'])
+            const result = config['round_change_card']?.[current - 1];
             if (result) {
                 toast("请注意，兰斯特洛身份发生了转换，全体玩家重新确认身份！")
                 const players = config.players.map(p => {
                     if(p.code.startsWith('lancelot')) {
                         const other_lancelot = Object.values(avatars).find(ap => (ap.code.startsWith('lancelot') && ap.code !== p.code));
-                        console.log("aaa", p, other_lancelot);
                         return {
                             ...p,
                             ...other_lancelot,
@@ -87,8 +102,15 @@ const EXTEND_RULES:Record<string, ExtendRule> = {
                     ...config,
                     players: players,
                 });
-                openModal(ReviewContainer);
-            }else {
+                openModal((close) => {
+                    const onClose = () => {
+                        close()
+                    }
+                    return (
+                        <ReviewContainer close={onClose}></ReviewContainer>
+                    )
+                });
+            } else {
                 toast("兰斯特洛身份未发生转换！")
             }
         }
@@ -107,9 +129,10 @@ const Title = styled.div({
     justifyContent: 'center',
     marginBottom: '1rem'
 })
-const ReviewContainer:Component<any> = (close) => {
+
+const ReviewContainer:Component<{close: () => void}> = (props) => {
     const onDone = () => {
-        close();
+        props.close();
     }
     return (
         <Container>

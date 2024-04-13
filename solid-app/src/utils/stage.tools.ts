@@ -8,6 +8,7 @@ type StageType = 'night' | 'task'
 export type GameConfig = PlayerTeamMapType & {
     players: Array<Player>
     tasks: Array<TaskRound>
+    [other: string]: any
 }
 export const generateGameConfig = (player_count: number):GameConfig => {
     const team = getPlayerTeam(player_count)!;

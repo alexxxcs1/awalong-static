@@ -1,4 +1,4 @@
-import { Component, For, Show, createEffect, createMemo, createSignal, on, untrack, useContext } from "solid-js"
+import { Component, For, Show, createEffect, createMemo, createSignal, getOwner, on, runWithOwner, untrack, useContext } from "solid-js"
 import { styled } from "solid-styled-components"
 import { GameStageContext, generateGameConfig } from "../../utils/stage.tools";
 import { Button } from "solid-bootstrap";
@@ -86,6 +86,7 @@ type TaskStatus = {
     votes: Array<VoteStatus>
 }
 export const GameTask:Component = () => {
+    const owner = getOwner();
     const context = useContext(GameStageContext);
     const [task_status, updateTaskStatus] = createSignal<Array<TaskStatus>>([]);
     const [success_camp, updateCampResult] = createSignal<AvatarType['type']>(); 
@@ -97,9 +98,26 @@ export const GameTask:Component = () => {
             const success_camp_name = getCampName(successed);
             return `游戏已结束！${success_camp_name}取得胜利`;
         }
+    });
+    
+    const beginHookAction = createMemo(() => {
+        const currentRound = task_status().length + 1;
+        let isProcessed = false;
+        return async () => {
+            if (isProcessed) return;
+            await runWithOwner(owner, async () => {
+                const response = context?.extendRule?.onEveryRoundBegin?.(currentRound, context.config, (c) => {
+                    context.updateConfig(c);
+                });
+                if (response) {
+                    await response
+                }
+            })
+            isProcessed = true;
+        }
     })
 
-    const startVote = (index: number) => {
+    const startVote = async (index: number) => {
         const result_content_data = result_content();
         if(result_content_data) {
             toast(result_content_data)
@@ -117,6 +135,8 @@ export const GameTask:Component = () => {
             return;
         };
         const task = tasks![index];
+
+        await beginHookAction()();
         
         openModal((close) => {
             const onConfirm = (votes:Array<VoteStatus>) => {
@@ -182,15 +202,6 @@ export const GameTask:Component = () => {
             });
         });
     });
-
-    createEffect(() => {
-        const currentRound = task_status().length + 1;
-        untrack(() => {
-            context?.extendRule?.onEveryRoundBegin?.(currentRound, context.config, (c) => {
-                context.updateConfig(c);
-            });
-        });
-    })
 
     createEffect(() => {
         const base_result = game_has_base_result();
