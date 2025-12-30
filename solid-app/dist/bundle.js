@@ -3,20 +3,34 @@
   // node_modules/solid-js/dist/solid.js
   var sharedConfig = {
     context: void 0,
-    registry: void 0
+    registry: void 0,
+    effects: void 0,
+    done: false,
+    getContextId() {
+      return getContextId(this.context.count);
+    },
+    getNextContextId() {
+      return getContextId(this.context.count++);
+    }
   };
+  function getContextId(count) {
+    const num = String(count), len = num.length - 1;
+    return sharedConfig.context.id + (len ? String.fromCharCode(96 + len) : "") + num;
+  }
   function setHydrateContext(context2) {
     sharedConfig.context = context2;
   }
   function nextHydrateContext() {
     return {
       ...sharedConfig.context,
-      id: `${sharedConfig.context.id}${sharedConfig.context.count++}-`,
+      id: sharedConfig.getNextContextId(),
       count: 0
     };
   }
+  var IS_DEV = false;
   var equalFn = (a2, b2) => a2 === b2;
   var $PROXY = Symbol("solid-proxy");
+  var SUPPORTS_PROXY = typeof Proxy === "function";
   var $TRACK = Symbol("solid-track");
   var $DEVCOMP = Symbol("solid-dev-component");
   var signalOptions = {
@@ -113,25 +127,20 @@
   }
   function createSelector(source, fn2 = equalFn, options) {
     const subs = /* @__PURE__ */ new Map();
-    const node = createComputation(
-      (p2) => {
-        const v = source();
-        for (const [key, val] of subs.entries())
-          if (fn2(key, v) !== fn2(key, p2)) {
-            for (const c2 of val.values()) {
-              c2.state = STALE;
-              if (c2.pure)
-                Updates.push(c2);
-              else
-                Effects.push(c2);
-            }
+    const node = createComputation((p2) => {
+      const v = source();
+      for (const [key, val] of subs.entries())
+        if (fn2(key, v) !== fn2(key, p2)) {
+          for (const c2 of val.values()) {
+            c2.state = STALE;
+            if (c2.pure)
+              Updates.push(c2);
+            else
+              Effects.push(c2);
           }
-        return v;
-      },
-      void 0,
-      true,
-      STALE
-    );
+        }
+      return v;
+    }, void 0, true, STALE);
     updateComputation(node);
     return (key) => {
       const listener = Listener;
@@ -146,10 +155,7 @@
           !l2.size && subs.delete(key);
         });
       }
-      return fn2(
-        key,
-        Transition && Transition.running && Transition.sources.has(node) ? node.tValue : node.value
-      );
+      return fn2(key, Transition && Transition.running && Transition.sources.has(node) ? node.tValue : node.value);
     };
   }
   function batch(fn2) {
@@ -182,7 +188,7 @@
         input = deps();
       if (defer) {
         defer = false;
-        return void 0;
+        return prevValue;
       }
       const result = untrack(() => fn2(input, prevInput, prevValue));
       prevInput = input;
@@ -259,16 +265,17 @@
     };
   }
   function useContext(context2) {
-    return Owner && Owner.context && Owner.context[context2.id] !== void 0 ? Owner.context[context2.id] : context2.defaultValue;
+    let value;
+    return Owner && Owner.context && (value = Owner.context[context2.id]) !== void 0 ? value : context2.defaultValue;
   }
   function children(fn2) {
     const children2 = createMemo(fn2);
-    const memo = createMemo(() => resolveChildren(children2()));
-    memo.toArray = () => {
-      const c2 = memo();
+    const memo2 = createMemo(() => resolveChildren(children2()));
+    memo2.toArray = () => {
+      const c2 = memo2();
       return Array.isArray(c2) ? c2 : c2 != null ? [c2] : [];
     };
-    return memo;
+    return memo2;
   }
   var SuspenseContext;
   function readSignal() {
@@ -339,7 +346,7 @@
           }
           if (Updates.length > 1e6) {
             Updates = [];
-            if (false)
+            if (IS_DEV)
               ;
             throw new Error();
           }
@@ -353,11 +360,7 @@
       return;
     cleanNode(node);
     const time = ExecCount;
-    runComputation(
-      node,
-      Transition && Transition.running && Transition.sources.has(node) ? node.tValue : node.value,
-      time
-    );
+    runComputation(node, Transition && Transition.running && Transition.sources.has(node) ? node.tValue : node.value, time);
     if (Transition && !Transition.running && Transition.sources.has(node)) {
       queueMicrotask(() => {
         runUpdates(() => {
@@ -597,12 +600,13 @@
         sharedConfig.effects || (sharedConfig.effects = []);
         sharedConfig.effects.push(...queue.slice(0, userLength));
         return;
-      } else if (sharedConfig.effects) {
-        queue = [...sharedConfig.effects, ...queue];
-        userLength += sharedConfig.effects.length;
-        delete sharedConfig.effects;
       }
       setHydrateContext();
+    }
+    if (sharedConfig.effects && (sharedConfig.done || !sharedConfig.count)) {
+      queue = [...sharedConfig.effects, ...queue];
+      userLength += sharedConfig.effects.length;
+      delete sharedConfig.effects;
     }
     for (i2 = 0; i2 < userLength; i2++)
       runTop(queue[i2]);
@@ -657,12 +661,12 @@
         }
       }
     }
+    if (node.tOwned) {
+      for (i2 = node.tOwned.length - 1; i2 >= 0; i2--)
+        cleanNode(node.tOwned[i2]);
+      delete node.tOwned;
+    }
     if (Transition && Transition.running && node.pure) {
-      if (node.tOwned) {
-        for (i2 = node.tOwned.length - 1; i2 >= 0; i2--)
-          cleanNode(node.tOwned[i2]);
-        delete node.tOwned;
-      }
       reset(node, true);
     } else if (node.owned) {
       for (i2 = node.owned.length - 1; i2 >= 0; i2--)
@@ -735,16 +739,13 @@
   function createProvider(id, options) {
     return function provider(props) {
       let res;
-      createRenderEffect(
-        () => res = untrack(() => {
-          Owner.context = {
-            ...Owner.context,
-            [id]: props.value
-          };
-          return children(() => props.children);
-        }),
-        void 0
-      );
+      createRenderEffect(() => res = untrack(() => {
+        Owner.context = {
+          ...Owner.context,
+          [id]: props.value
+        };
+        return children(() => props.children);
+      }), void 0);
       return res;
     };
   }
@@ -757,10 +758,10 @@
     let items = [], mapped = [], disposers = [], len = 0, indexes = mapFn.length > 1 ? [] : null;
     onCleanup(() => dispose(disposers));
     return () => {
-      let newItems = list() || [], i2, j;
+      let newItems = list() || [], newLen = newItems.length, i2, j;
       newItems[$TRACK];
       return untrack(() => {
-        let newLen = newItems.length, newIndices, newIndicesNext, temp, tempdisposers, tempIndexes, start2, end2, newEnd, item;
+        let newIndices, newIndicesNext, temp, tempdisposers, tempIndexes, start2, end2, newEnd, item;
         if (newLen === 0) {
           if (len !== 0) {
             dispose(disposers);
@@ -904,32 +905,29 @@
       proxy = proxy || !!s2 && $PROXY in s2;
       sources[i2] = typeof s2 === "function" ? (proxy = true, createMemo(s2)) : s2;
     }
-    if (proxy) {
-      return new Proxy(
-        {
-          get(property) {
-            for (let i2 = sources.length - 1; i2 >= 0; i2--) {
-              const v = resolveSource(sources[i2])[property];
-              if (v !== void 0)
-                return v;
-            }
-          },
-          has(property) {
-            for (let i2 = sources.length - 1; i2 >= 0; i2--) {
-              if (property in resolveSource(sources[i2]))
-                return true;
-            }
-            return false;
-          },
-          keys() {
-            const keys = [];
-            for (let i2 = 0; i2 < sources.length; i2++)
-              keys.push(...Object.keys(resolveSource(sources[i2])));
-            return [...new Set(keys)];
+    if (SUPPORTS_PROXY && proxy) {
+      return new Proxy({
+        get(property) {
+          for (let i2 = sources.length - 1; i2 >= 0; i2--) {
+            const v = resolveSource(sources[i2])[property];
+            if (v !== void 0)
+              return v;
           }
         },
-        propTraps
-      );
+        has(property) {
+          for (let i2 = sources.length - 1; i2 >= 0; i2--) {
+            if (property in resolveSource(sources[i2]))
+              return true;
+          }
+          return false;
+        },
+        keys() {
+          const keys = [];
+          for (let i2 = 0; i2 < sources.length; i2++)
+            keys.push(...Object.keys(resolveSource(sources[i2])));
+          return [...new Set(keys)];
+        }
+      }, propTraps);
     }
     const sourcesMap = {};
     const defined = /* @__PURE__ */ Object.create(null);
@@ -972,61 +970,52 @@
     return target;
   }
   function splitProps(props, ...keys) {
-    if ($PROXY in props) {
-      const blocked = new Set(keys.length > 1 ? keys.flat() : keys[0]);
+    const len = keys.length;
+    if (SUPPORTS_PROXY && $PROXY in props) {
+      const blocked = len > 1 ? keys.flat() : keys[0];
       const res = keys.map((k) => {
-        return new Proxy(
-          {
-            get(property) {
-              return k.includes(property) ? props[property] : void 0;
-            },
-            has(property) {
-              return k.includes(property) && property in props;
-            },
-            keys() {
-              return k.filter((property) => property in props);
-            }
+        return new Proxy({
+          get(property) {
+            return k.includes(property) ? props[property] : void 0;
           },
-          propTraps
-        );
+          has(property) {
+            return k.includes(property) && property in props;
+          },
+          keys() {
+            return k.filter((property) => property in props);
+          }
+        }, propTraps);
       });
-      res.push(
-        new Proxy(
-          {
-            get(property) {
-              return blocked.has(property) ? void 0 : props[property];
-            },
-            has(property) {
-              return blocked.has(property) ? false : property in props;
-            },
-            keys() {
-              return Object.keys(props).filter((k) => !blocked.has(k));
-            }
-          },
-          propTraps
-        )
-      );
+      res.push(new Proxy({
+        get(property) {
+          return blocked.includes(property) ? void 0 : props[property];
+        },
+        has(property) {
+          return blocked.includes(property) ? false : property in props;
+        },
+        keys() {
+          return Object.keys(props).filter((k) => !blocked.includes(k));
+        }
+      }, propTraps));
       return res;
     }
-    const otherObject = {};
-    const objects = keys.map(() => ({}));
+    const objects = [];
+    for (let i2 = 0; i2 <= len; i2++) {
+      objects[i2] = {};
+    }
     for (const propName of Object.getOwnPropertyNames(props)) {
+      let keyIndex = len;
+      for (let i2 = 0; i2 < keys.length; i2++) {
+        if (keys[i2].includes(propName)) {
+          keyIndex = i2;
+          break;
+        }
+      }
       const desc = Object.getOwnPropertyDescriptor(props, propName);
       const isDefaultDesc = !desc.get && !desc.set && desc.enumerable && desc.writable && desc.configurable;
-      let blocked = false;
-      let objectIndex = 0;
-      for (const k of keys) {
-        if (k.includes(propName)) {
-          blocked = true;
-          isDefaultDesc ? objects[objectIndex][propName] = desc.value : Object.defineProperty(objects[objectIndex], propName, desc);
-        }
-        ++objectIndex;
-      }
-      if (!blocked) {
-        isDefaultDesc ? otherObject[propName] = desc.value : Object.defineProperty(otherObject, propName, desc);
-      }
+      isDefaultDesc ? objects[keyIndex][propName] = desc.value : Object.defineProperty(objects[keyIndex], propName, desc);
     }
-    return [...objects, otherObject];
+    return objects;
   }
   var narrowedError = (name) => `Stale read from <${name}>.`;
   function For(props) {
@@ -1037,83 +1026,65 @@
   }
   function Show(props) {
     const keyed = props.keyed;
-    const condition = createMemo(() => props.when, void 0, {
-      equals: (a2, b2) => keyed ? a2 === b2 : !a2 === !b2
+    const conditionValue = createMemo(() => props.when, void 0, void 0);
+    const condition = keyed ? conditionValue : createMemo(conditionValue, void 0, {
+      equals: (a2, b2) => !a2 === !b2
     });
-    return createMemo(
-      () => {
-        const c2 = condition();
-        if (c2) {
-          const child = props.children;
-          const fn2 = typeof child === "function" && child.length > 0;
-          return fn2 ? untrack(
-            () => child(
-              keyed ? c2 : () => {
-                if (!untrack(condition))
-                  throw narrowedError("Show");
-                return props.when;
-              }
-            )
-          ) : child;
-        }
-        return props.fallback;
-      },
-      void 0,
-      void 0
-    );
+    return createMemo(() => {
+      const c2 = condition();
+      if (c2) {
+        const child = props.children;
+        const fn2 = typeof child === "function" && child.length > 0;
+        return fn2 ? untrack(() => child(keyed ? c2 : () => {
+          if (!untrack(condition))
+            throw narrowedError("Show");
+          return conditionValue();
+        })) : child;
+      }
+      return props.fallback;
+    }, void 0, void 0);
   }
   function Switch(props) {
-    let keyed = false;
-    const equals = (a2, b2) => (keyed ? a2[1] === b2[1] : !a2[1] === !b2[1]) && a2[2] === b2[2];
-    const conditions = children(() => props.children), evalConditions = createMemo(
-      () => {
-        let conds = conditions();
-        if (!Array.isArray(conds))
-          conds = [conds];
-        for (let i2 = 0; i2 < conds.length; i2++) {
-          const c2 = conds[i2].when;
-          if (c2) {
-            keyed = !!conds[i2].keyed;
-            return [i2, c2, conds[i2]];
-          }
-        }
-        return [-1];
-      },
-      void 0,
-      {
-        equals
+    const chs = children(() => props.children);
+    const switchFunc = createMemo(() => {
+      const ch = chs();
+      const mps = Array.isArray(ch) ? ch : [ch];
+      let func = () => void 0;
+      for (let i2 = 0; i2 < mps.length; i2++) {
+        const index = i2;
+        const mp = mps[i2];
+        const prevFunc = func;
+        const conditionValue = createMemo(() => prevFunc() ? void 0 : mp.when, void 0, void 0);
+        const condition = mp.keyed ? conditionValue : createMemo(conditionValue, void 0, {
+          equals: (a2, b2) => !a2 === !b2
+        });
+        func = () => prevFunc() || (condition() ? [index, conditionValue, mp] : void 0);
       }
-    );
-    return createMemo(
-      () => {
-        const [index, when, cond] = evalConditions();
-        if (index < 0)
-          return props.fallback;
-        const c2 = cond.children;
-        const fn2 = typeof c2 === "function" && c2.length > 0;
-        return fn2 ? untrack(
-          () => c2(
-            keyed ? when : () => {
-              if (untrack(evalConditions)[0] !== index)
-                throw narrowedError("Match");
-              return cond.when;
-            }
-          )
-        ) : c2;
-      },
-      void 0,
-      void 0
-    );
+      return func;
+    });
+    return createMemo(() => {
+      const sel = switchFunc()();
+      if (!sel)
+        return props.fallback;
+      const [index, conditionValue, mp] = sel;
+      const child = mp.children;
+      const fn2 = typeof child === "function" && child.length > 0;
+      return fn2 ? untrack(() => child(mp.keyed ? conditionValue() : () => {
+        if (untrack(switchFunc)()?.[0] !== index)
+          throw narrowedError("Match");
+        return conditionValue();
+      })) : child;
+    }, void 0, void 0);
   }
   function Match(props) {
     return props;
   }
-  var SuspenseListContext = createContext();
 
   // node_modules/solid-js/web/dist/web.js
   var booleans = [
     "allowfullscreen",
     "async",
+    "alpha",
     "autofocus",
     "autoplay",
     "checked",
@@ -1136,30 +1107,59 @@
     "required",
     "reversed",
     "seamless",
-    "selected"
+    "selected",
+    "adauctionheaders",
+    "browsingtopics",
+    "credentialless",
+    "defaultchecked",
+    "defaultmuted",
+    "defaultselected",
+    "defer",
+    "disablepictureinpicture",
+    "disableremoteplayback",
+    "preservespitch",
+    "shadowrootclonable",
+    "shadowrootcustomelementregistry",
+    "shadowrootdelegatesfocus",
+    "shadowrootserializable",
+    "sharedstoragewritable"
   ];
   var Properties = /* @__PURE__ */ new Set([
     "className",
     "value",
     "readOnly",
+    "noValidate",
     "formNoValidate",
     "isMap",
     "noModule",
     "playsInline",
+    "adAuctionHeaders",
+    "allowFullscreen",
+    "browsingTopics",
+    "defaultChecked",
+    "defaultMuted",
+    "defaultSelected",
+    "disablePictureInPicture",
+    "disableRemotePlayback",
+    "preservesPitch",
+    "shadowRootClonable",
+    "shadowRootCustomElementRegistry",
+    "shadowRootDelegatesFocus",
+    "shadowRootSerializable",
+    "sharedStorageWritable",
     ...booleans
   ]);
-  var ChildProperties = /* @__PURE__ */ new Set([
-    "innerHTML",
-    "textContent",
-    "innerText",
-    "children"
-  ]);
+  var ChildProperties = /* @__PURE__ */ new Set(["innerHTML", "textContent", "innerText", "children"]);
   var Aliases = /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null), {
     className: "class",
     htmlFor: "for"
   });
   var PropAliases = /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null), {
     class: "className",
+    novalidate: {
+      $: "noValidate",
+      FORM: 1
+    },
     formnovalidate: {
       $: "formNoValidate",
       BUTTON: 1,
@@ -1181,36 +1181,69 @@
       $: "readOnly",
       INPUT: 1,
       TEXTAREA: 1
+    },
+    adauctionheaders: {
+      $: "adAuctionHeaders",
+      IFRAME: 1
+    },
+    allowfullscreen: {
+      $: "allowFullscreen",
+      IFRAME: 1
+    },
+    browsingtopics: {
+      $: "browsingTopics",
+      IMG: 1
+    },
+    defaultchecked: {
+      $: "defaultChecked",
+      INPUT: 1
+    },
+    defaultmuted: {
+      $: "defaultMuted",
+      AUDIO: 1,
+      VIDEO: 1
+    },
+    defaultselected: {
+      $: "defaultSelected",
+      OPTION: 1
+    },
+    disablepictureinpicture: {
+      $: "disablePictureInPicture",
+      VIDEO: 1
+    },
+    disableremoteplayback: {
+      $: "disableRemotePlayback",
+      AUDIO: 1,
+      VIDEO: 1
+    },
+    preservespitch: {
+      $: "preservesPitch",
+      AUDIO: 1,
+      VIDEO: 1
+    },
+    shadowrootclonable: {
+      $: "shadowRootClonable",
+      TEMPLATE: 1
+    },
+    shadowrootdelegatesfocus: {
+      $: "shadowRootDelegatesFocus",
+      TEMPLATE: 1
+    },
+    shadowrootserializable: {
+      $: "shadowRootSerializable",
+      TEMPLATE: 1
+    },
+    sharedstoragewritable: {
+      $: "sharedStorageWritable",
+      IFRAME: 1,
+      IMG: 1
     }
   });
   function getPropAlias(prop, tagName) {
     const a2 = PropAliases[prop];
     return typeof a2 === "object" ? a2[tagName] ? a2["$"] : void 0 : a2;
   }
-  var DelegatedEvents = /* @__PURE__ */ new Set([
-    "beforeinput",
-    "click",
-    "dblclick",
-    "contextmenu",
-    "focusin",
-    "focusout",
-    "input",
-    "keydown",
-    "keyup",
-    "mousedown",
-    "mousemove",
-    "mouseout",
-    "mouseover",
-    "mouseup",
-    "pointerdown",
-    "pointermove",
-    "pointerout",
-    "pointerover",
-    "pointerup",
-    "touchend",
-    "touchmove",
-    "touchstart"
-  ]);
+  var DelegatedEvents = /* @__PURE__ */ new Set(["beforeinput", "click", "dblclick", "contextmenu", "focusin", "focusout", "input", "keydown", "keyup", "mousedown", "mousemove", "mouseout", "mouseover", "mouseup", "pointerdown", "pointermove", "pointerout", "pointerover", "pointerup", "touchend", "touchmove", "touchstart"]);
   var SVGElements = /* @__PURE__ */ new Set([
     "altGlyph",
     "altGlyphDef",
@@ -1234,6 +1267,7 @@
     "feDiffuseLighting",
     "feDisplacementMap",
     "feDistantLight",
+    "feDropShadow",
     "feFlood",
     "feFuncA",
     "feFuncB",
@@ -1293,6 +1327,7 @@
     xlink: "http://www.w3.org/1999/xlink",
     xml: "http://www.w3.org/XML/1998/namespace"
   };
+  var memo = (fn2) => createMemo(() => fn2());
   function reconcileArrays(parentNode, a2, b2) {
     let bLength = b2.length, aEnd = a2.length, bEnd = bLength, aStart = 0, bStart = 0, after = a2[aEnd - 1].nextSibling, map = null;
     while (aStart < aEnd || bStart < bEnd) {
@@ -1361,14 +1396,14 @@
       element.textContent = "";
     };
   }
-  function template(html, isCE, isSVG) {
+  function template(html, isImportNode, isSVG, isMathML) {
     let node;
     const create = () => {
-      const t2 = document.createElement("template");
+      const t2 = isMathML ? document.createElementNS("http://www.w3.org/1998/Math/MathML", "template") : document.createElement("template");
       t2.innerHTML = html;
-      return isSVG ? t2.content.firstChild.firstChild : t2.content.firstChild;
+      return isSVG ? t2.content.firstChild.firstChild : isMathML ? t2.firstChild : t2.content.firstChild;
     };
-    const fn2 = isCE ? () => untrack(() => document.importNode(node || (node = create()), true)) : () => (node || (node = create())).cloneNode(true);
+    const fn2 = isImportNode ? () => untrack(() => document.importNode(node || (node = create()), true)) : () => (node || (node = create())).cloneNode(true);
     fn2.cloneNode = fn2;
     return fn2;
   }
@@ -1383,7 +1418,7 @@
     }
   }
   function setAttribute(node, name, value) {
-    if (sharedConfig.context)
+    if (isHydrating(node))
       return;
     if (value == null)
       node.removeAttribute(name);
@@ -1391,15 +1426,20 @@
       node.setAttribute(name, value);
   }
   function setAttributeNS(node, namespace, name, value) {
-    if (sharedConfig.context)
+    if (isHydrating(node))
       return;
     if (value == null)
       node.removeAttributeNS(namespace, name);
     else
       node.setAttributeNS(namespace, name, value);
   }
+  function setBoolAttribute(node, name, value) {
+    if (isHydrating(node))
+      return;
+    value ? node.setAttribute(name, "") : node.removeAttribute(name);
+  }
   function className(node, value) {
-    if (sharedConfig.context)
+    if (isHydrating(node))
       return;
     if (value == null)
       node.removeAttribute("class");
@@ -1417,7 +1457,7 @@
       const handlerFn = handler[0];
       node.addEventListener(name, handler[0] = (e2) => handlerFn.call(node, handler[1], e2));
     } else
-      node.addEventListener(name, handler);
+      node.addEventListener(name, handler, typeof handler !== "function" && handler);
   }
   function classList(node, value, prev = {}) {
     const classKeys = Object.keys(value || {}), prevKeys = Object.keys(prev);
@@ -1464,11 +1504,9 @@
   function spread(node, props = {}, isSVG, skipChildren) {
     const prevProps = {};
     if (!skipChildren) {
-      createRenderEffect(
-        () => prevProps.children = insertExpression(node, props.children, prevProps.children)
-      );
+      createRenderEffect(() => prevProps.children = insertExpression(node, props.children, prevProps.children));
     }
-    createRenderEffect(() => props.ref && props.ref(node));
+    createRenderEffect(() => typeof props.ref === "function" && use(props.ref, node));
     createRenderEffect(() => assign(node, props, isSVG, true, prevProps, true));
     return prevProps;
   }
@@ -1488,7 +1526,7 @@
       if (!(prop in props)) {
         if (prop === "children")
           continue;
-        prevProps[prop] = assignProp(node, prop, null, prevProps[prop], isSVG, skipRef);
+        prevProps[prop] = assignProp(node, prop, null, prevProps[prop], isSVG, skipRef, props);
       }
     }
     for (const prop in props) {
@@ -1498,18 +1536,21 @@
         continue;
       }
       const value = props[prop];
-      prevProps[prop] = assignProp(node, prop, value, prevProps[prop], isSVG, skipRef);
+      prevProps[prop] = assignProp(node, prop, value, prevProps[prop], isSVG, skipRef, props);
     }
   }
   function getNextElement(template2) {
-    let node, key;
-    if (!sharedConfig.context || !(node = sharedConfig.registry.get(key = getHydrationKey()))) {
+    let node, key, hydrating = isHydrating();
+    if (!hydrating || !(node = sharedConfig.registry.get(key = getHydrationKey()))) {
       return template2();
     }
     if (sharedConfig.completed)
       sharedConfig.completed.add(node);
     sharedConfig.registry.delete(key);
     return node;
+  }
+  function isHydrating(node) {
+    return !!sharedConfig.context && !sharedConfig.done && (!node || node.isConnected);
   }
   function toPropertyName(name) {
     return name.toLowerCase().replace(/-([a-z])/g, (_, w) => w.toUpperCase());
@@ -1519,7 +1560,7 @@
     for (let i2 = 0, nameLen = classNames2.length; i2 < nameLen; i2++)
       node.classList.toggle(classNames2[i2], value);
   }
-  function assignProp(node, prop, value, prev, isSVG, skipRef) {
+  function assignProp(node, prop, value, prev, isSVG, skipRef, props) {
     let isCE, isProp, isChildProp, propAlias, forceProp;
     if (prop === "style")
       return style(node, value, prev);
@@ -1532,8 +1573,8 @@
         value(node);
     } else if (prop.slice(0, 3) === "on:") {
       const e2 = prop.slice(3);
-      prev && node.removeEventListener(e2, prev);
-      value && node.addEventListener(e2, value);
+      prev && node.removeEventListener(e2, prev, typeof prev !== "function" && prev);
+      value && node.addEventListener(e2, value, typeof value !== "function" && value);
     } else if (prop.slice(0, 10) === "oncapture:") {
       const e2 = prop.slice(10);
       prev && node.removeEventListener(e2, prev, true);
@@ -1551,11 +1592,13 @@
       }
     } else if (prop.slice(0, 5) === "attr:") {
       setAttribute(node, prop.slice(5), value);
-    } else if ((forceProp = prop.slice(0, 5) === "prop:") || (isChildProp = ChildProperties.has(prop)) || !isSVG && ((propAlias = getPropAlias(prop, node.tagName)) || (isProp = Properties.has(prop))) || (isCE = node.nodeName.includes("-"))) {
+    } else if (prop.slice(0, 5) === "bool:") {
+      setBoolAttribute(node, prop.slice(5), value);
+    } else if ((forceProp = prop.slice(0, 5) === "prop:") || (isChildProp = ChildProperties.has(prop)) || !isSVG && ((propAlias = getPropAlias(prop, node.tagName)) || (isProp = Properties.has(prop))) || (isCE = node.nodeName.includes("-") || "is" in props)) {
       if (forceProp) {
         prop = prop.slice(5);
         isProp = true;
-      } else if (sharedConfig.context)
+      } else if (isHydrating(node))
         return value;
       if (prop === "class" || prop === "className")
         className(node, value);
@@ -1573,14 +1616,33 @@
     return value;
   }
   function eventHandler(e2) {
-    const key = `$$${e2.type}`;
-    let node = e2.composedPath && e2.composedPath()[0] || e2.target;
-    if (e2.target !== node) {
-      Object.defineProperty(e2, "target", {
-        configurable: true,
-        value: node
-      });
+    if (sharedConfig.registry && sharedConfig.events) {
+      if (sharedConfig.events.find(([el, ev]) => ev === e2))
+        return;
     }
+    let node = e2.target;
+    const key = `$$${e2.type}`;
+    const oriTarget = e2.target;
+    const oriCurrentTarget = e2.currentTarget;
+    const retarget = (value) => Object.defineProperty(e2, "target", {
+      configurable: true,
+      value
+    });
+    const handleNode = () => {
+      const handler = node[key];
+      if (handler && !node.disabled) {
+        const data = node[`${key}Data`];
+        data !== void 0 ? handler.call(node, data, e2) : handler.call(node, e2);
+        if (e2.cancelBubble)
+          return;
+      }
+      node.host && typeof node.host !== "string" && !node.host._$host && node.contains(e2.target) && retarget(node.host);
+      return true;
+    };
+    const walkUpTree = () => {
+      while (handleNode() && (node = node._$host || node.parentNode || node.host))
+        ;
+    };
     Object.defineProperty(e2, "currentTarget", {
       configurable: true,
       get() {
@@ -1589,19 +1651,29 @@
     });
     if (sharedConfig.registry && !sharedConfig.done)
       sharedConfig.done = _$HY.done = true;
-    while (node) {
-      const handler = node[key];
-      if (handler && !node.disabled) {
-        const data = node[`${key}Data`];
-        data !== void 0 ? handler.call(node, data, e2) : handler.call(node, e2);
-        if (e2.cancelBubble)
-          return;
+    if (e2.composedPath) {
+      const path = e2.composedPath();
+      retarget(path[0]);
+      for (let i2 = 0; i2 < path.length - 2; i2++) {
+        node = path[i2];
+        if (!handleNode())
+          break;
+        if (node._$host) {
+          node = node._$host;
+          walkUpTree();
+          break;
+        }
+        if (node.parentNode === oriCurrentTarget) {
+          break;
+        }
       }
-      node = node._$host || node.parentNode || node.host;
-    }
+    } else
+      walkUpTree();
+    retarget(oriTarget);
   }
   function insertExpression(parent, value, current, marker, unwrapArray) {
-    if (sharedConfig.context) {
+    const hydrating = isHydrating(parent);
+    if (hydrating) {
       !current && (current = [...parent.childNodes]);
       let cleaned = [];
       for (let i2 = 0; i2 < current.length; i2++) {
@@ -1620,10 +1692,13 @@
     const t2 = typeof value, multi = marker !== void 0;
     parent = multi && current[0] && current[0].parentNode || parent;
     if (t2 === "string" || t2 === "number") {
-      if (sharedConfig.context)
+      if (hydrating)
         return current;
-      if (t2 === "number")
+      if (t2 === "number") {
         value = value.toString();
+        if (value === current)
+          return current;
+      }
       if (multi) {
         let node = current[0];
         if (node && node.nodeType === 3) {
@@ -1638,7 +1713,7 @@
           current = parent.textContent = value;
       }
     } else if (value == null || t2 === "boolean") {
-      if (sharedConfig.context)
+      if (hydrating)
         return current;
       current = cleanChildren(parent, current, marker);
     } else if (t2 === "function") {
@@ -1656,13 +1731,15 @@
         createRenderEffect(() => current = insertExpression(parent, array, current, marker, true));
         return () => current;
       }
-      if (sharedConfig.context) {
+      if (hydrating) {
         if (!array.length)
           return current;
         if (marker === void 0)
-          return [...parent.childNodes];
+          return current = [...parent.childNodes];
         let node = array[0];
-        let nodes = [node];
+        if (node.parentNode !== parent)
+          return current;
+        const nodes = [node];
         while ((node = node.nextSibling) !== marker)
           nodes.push(node);
         return current = nodes;
@@ -1682,7 +1759,7 @@
       }
       current = array;
     } else if (value.nodeType) {
-      if (sharedConfig.context && value.parentNode)
+      if (hydrating && value.parentNode)
         return current = multi ? [value] : value;
       if (Array.isArray(current)) {
         if (multi)
@@ -1711,11 +1788,7 @@
         if (unwrap3) {
           while (typeof item === "function")
             item = item();
-          dynamic = normalizeIncomingArray(
-            normalized,
-            Array.isArray(item) ? item : [item],
-            Array.isArray(prev) ? prev : [prev]
-          ) || dynamic;
+          dynamic = normalizeIncomingArray(normalized, Array.isArray(item) ? item : [item], Array.isArray(prev) ? prev : [prev]) || dynamic;
         } else {
           normalized.push(item);
           dynamic = true;
@@ -1756,73 +1829,81 @@
     return [node];
   }
   function getHydrationKey() {
-    const hydrate = sharedConfig.context;
-    return `${hydrate.id}${hydrate.count++}`;
+    return sharedConfig.getNextContextId();
   }
   var RequestContext = Symbol();
   var isServer = false;
   var SVG_NAMESPACE = "http://www.w3.org/2000/svg";
-  function createElement(tagName, isSVG = false) {
-    return isSVG ? document.createElementNS(SVG_NAMESPACE, tagName) : document.createElement(tagName);
+  function createElement(tagName, isSVG = false, is = void 0) {
+    return isSVG ? document.createElementNS(SVG_NAMESPACE, tagName) : document.createElement(tagName, {
+      is
+    });
   }
   function Portal(props) {
-    const { useShadow } = props, marker = document.createTextNode(""), mount = () => props.mount || document.body, owner = getOwner();
+    const {
+      useShadow
+    } = props, marker = document.createTextNode(""), mount = () => props.mount || document.body, owner = getOwner();
     let content;
     let hydrating = !!sharedConfig.context;
-    createEffect(
-      () => {
-        if (hydrating)
-          getOwner().user = hydrating = false;
-        content || (content = runWithOwner(owner, () => createMemo(() => props.children)));
-        const el = mount();
-        if (el instanceof HTMLHeadElement) {
-          const [clean, setClean] = createSignal(false);
-          const cleanup = () => setClean(true);
-          createRoot((dispose2) => insert(el, () => !clean() ? content() : dispose2(), null));
-          onCleanup(cleanup);
-        } else {
-          const container = createElement(props.isSVG ? "g" : "div", props.isSVG), renderRoot = useShadow && container.attachShadow ? container.attachShadow({
-            mode: "open"
-          }) : container;
-          Object.defineProperty(container, "_$host", {
-            get() {
-              return marker.parentNode;
-            },
-            configurable: true
-          });
-          insert(renderRoot, content);
-          el.appendChild(container);
-          props.ref && props.ref(container);
-          onCleanup(() => el.removeChild(container));
-        }
-      },
-      void 0,
-      {
-        render: !hydrating
+    createEffect(() => {
+      if (hydrating)
+        getOwner().user = hydrating = false;
+      content || (content = runWithOwner(owner, () => createMemo(() => props.children)));
+      const el = mount();
+      if (el instanceof HTMLHeadElement) {
+        const [clean, setClean] = createSignal(false);
+        const cleanup = () => setClean(true);
+        createRoot((dispose2) => insert(el, () => !clean() ? content() : dispose2(), null));
+        onCleanup(cleanup);
+      } else {
+        const container = createElement(props.isSVG ? "g" : "div", props.isSVG), renderRoot = useShadow && container.attachShadow ? container.attachShadow({
+          mode: "open"
+        }) : container;
+        Object.defineProperty(container, "_$host", {
+          get() {
+            return marker.parentNode;
+          },
+          configurable: true
+        });
+        insert(renderRoot, content);
+        el.appendChild(container);
+        props.ref && props.ref(container);
+        onCleanup(() => el.removeChild(container));
       }
-    );
+    }, void 0, {
+      render: !hydrating
+    });
     return marker;
   }
-  function Dynamic(props) {
-    const [p2, others] = splitProps(props, ["component"]);
-    const cached = createMemo(() => p2.component);
+  function createDynamic(component, props) {
+    const cached = createMemo(component);
     return createMemo(() => {
-      const component = cached();
-      switch (typeof component) {
+      const component2 = cached();
+      switch (typeof component2) {
         case "function":
-          return untrack(() => component(others));
+          return untrack(() => component2(props));
         case "string":
-          const isSvg = SVGElements.has(component);
-          const el = sharedConfig.context ? getNextElement() : createElement(component, isSvg);
-          spread(el, others, isSvg);
+          const isSvg = SVGElements.has(component2);
+          const el = sharedConfig.context ? getNextElement() : createElement(component2, isSvg, untrack(() => props.is));
+          spread(el, props, isSvg);
           return el;
       }
     });
   }
+  function Dynamic(props) {
+    const [, others] = splitProps(props, ["component"]);
+    return createDynamic(() => props.component, others);
+  }
 
   // node_modules/goober/dist/goober.modern.js
   var e = { data: "" };
-  var t = (t2) => "object" == typeof window ? ((t2 ? t2.querySelector("#_goober") : window._goober) || Object.assign((t2 || document.head).appendChild(document.createElement("style")), { innerHTML: " ", id: "_goober" })).firstChild : t2 || e;
+  var t = (t2) => {
+    if ("object" == typeof window) {
+      let e2 = (t2 ? t2.querySelector("#_goober") : window._goober) || Object.assign(document.createElement("style"), { innerHTML: " ", id: "_goober" });
+      return e2.nonce = window.__nonce__, e2.parentNode || (t2 || document.head).appendChild(e2), e2.firstChild;
+    }
+    return t2 || e;
+  };
   var l = /(?:([\u0080-\uFFFF\w-%@]+) *:? *([^{;]+?);|([^;}{]*?) *{)|(}\s*)/g;
   var a = /\/\*[^]*?\*\/|  +/g;
   var n = /\n+/g;
@@ -1830,7 +1911,7 @@
     let r = "", l2 = "", a2 = "";
     for (let n2 in e2) {
       let c2 = e2[n2];
-      "@" == n2[0] ? "i" == n2[1] ? r = n2 + " " + c2 + ";" : l2 += "f" == n2[1] ? o(c2, n2) : n2 + "{" + o(c2, "k" == n2[1] ? "" : t2) + "}" : "object" == typeof c2 ? l2 += o(c2, t2 ? t2.replace(/([^,])+/g, (e3) => n2.replace(/(^:.*)|([^,])+/g, (t3) => /&/.test(t3) ? t3.replace(/&/g, e3) : e3 ? e3 + " " + t3 : t3)) : n2) : null != c2 && (n2 = /^--/.test(n2) ? n2 : n2.replace(/[A-Z]/g, "-$&").toLowerCase(), a2 += o.p ? o.p(n2, c2) : n2 + ":" + c2 + ";");
+      "@" == n2[0] ? "i" == n2[1] ? r = n2 + " " + c2 + ";" : l2 += "f" == n2[1] ? o(c2, n2) : n2 + "{" + o(c2, "k" == n2[1] ? "" : t2) + "}" : "object" == typeof c2 ? l2 += o(c2, t2 ? t2.replace(/([^,])+/g, (e3) => n2.replace(/([^,]*:\S+\([^)]*\))|([^,])+/g, (t3) => /&/.test(t3) ? t3.replace(/&/g, e3) : e3 ? e3 + " " + t3 : t3)) : n2) : null != c2 && (n2 = /^--/.test(n2) ? n2 : n2.replace(/[A-Z]/g, "-$&").toLowerCase(), a2 += o.p ? o.p(n2, c2) : n2 + ":" + c2 + ";");
     }
     return r + (t2 && a2 ? t2 + "{" + a2 + "}" : a2) + l2;
   };
@@ -4434,7 +4515,7 @@
   function DropdownMenu(p2) {
     const [local, options] = splitProps(p2, ["children"]);
     const [props, meta] = useDropdownMenu(options);
-    return createMemo(() => local.children(props, meta));
+    return memo(() => local.children(props, meta));
   }
   var currentId = 0;
   function useSSRSafeId(defaultId) {
@@ -4474,7 +4555,7 @@
     children: children2
   }) {
     const [props, meta] = useDropdownToggle();
-    return createMemo(() => children2(props, meta));
+    return memo(() => children2(props, meta));
   }
   var SelectableContext = createContext(null);
   var makeEventKey = (eventKey, href = null) => {
@@ -5135,7 +5216,7 @@
     };
     return createComponent(Show, {
       get when() {
-        return createMemo(() => !!container())() && dialogVisible();
+        return memo(() => !!container())() && dialogVisible();
       },
       get children() {
         return createComponent(Portal, {
@@ -5349,7 +5430,7 @@
       const c2 = resolvedChildren();
       return typeof c2 === "function" ? c2(ENTERED, {}) : c2;
     };
-    return createMemo(callChild);
+    return memo(callChild);
   };
   var NoopTransition$1 = NoopTransition;
   var OverlayContext = createContext();
@@ -6150,7 +6231,7 @@
         }
       }), false, true);
       insert(_el$, (() => {
-        const _c$ = createMemo(() => !!local.dismissible);
+        const _c$ = memo(() => !!local.dismissible);
         return () => _c$() && createComponent(CloseButton$1, {
           onClick: handleClose,
           get ["aria-label"]() {
@@ -6292,7 +6373,7 @@
         return local.active ? "page" : void 0;
       },
       get children() {
-        return createMemo(() => !!local.active)() ? local.children : createComponent(Dynamic, mergeProps({
+        return memo(() => !!local.active)() ? local.children : createComponent(Dynamic, mergeProps({
           get component() {
             return local.linkAs;
           }
@@ -6453,7 +6534,7 @@
         return classNames(local.class, prefix, local.bg && `bg-${local.bg}`, local.text && `text-${local.text}`, local.border && `border-${local.border}`);
       },
       get children() {
-        return createMemo(() => !!local.body)() ? createComponent(CardBody, {
+        return memo(() => !!local.body)() ? createComponent(CardBody, {
           get children() {
             return local.children;
           }
@@ -6620,12 +6701,8 @@
       if (local.slide) {
         return;
       }
-      const active = renderedActiveIndex();
-      const direction2 = slideDirection();
-      untrack(() => {
-        local.onSlide?.(active, direction2);
-        local.onSlid?.(active, direction2);
-      });
+      local.onSlide?.(renderedActiveIndex(), slideDirection());
+      local.onSlid?.(renderedActiveIndex(), slideDirection());
     });
     const orderClass = createMemo(() => `${prefix}-item-${direction()}`);
     const directionalClass = createMemo(() => `${prefix}-item-${slideDirection()}`);
@@ -6743,7 +6820,7 @@
         return classNames(local.class, prefix, local.slide && "slide", local.fade && `${prefix}-fade`, local.variant && `${prefix}-${local.variant}`);
       },
       get children() {
-        return [createMemo(() => createMemo(() => !!local.indicators)() && (() => {
+        return [memo(() => memo(() => !!local.indicators)() && (() => {
           const _el$2 = _tmpl$$m.cloneNode(true);
           className(_el$2, `${prefix}-indicators`);
           insert(_el$2, createComponent(For, {
@@ -6804,26 +6881,26 @@
             }
           }));
           return _el$;
-        })(), createMemo(() => createMemo(() => !!local.controls)() && [createMemo((() => {
-          const _c$ = createMemo(() => !!(local.wrap || activeIndex() !== 0));
+        })(), memo(() => memo(() => !!local.controls)() && [memo((() => {
+          const _c$ = memo(() => !!(local.wrap || activeIndex() !== 0));
           return () => _c$() && createComponent(Anchor$1, {
             "class": `${prefix}-control-prev`,
             onClick: prev,
             get children() {
-              return [createMemo(() => local.prevIcon ?? _tmpl$3$1.cloneNode(true)), createMemo(() => createMemo(() => !!local.prevLabel)() && (() => {
+              return [memo(() => local.prevIcon ?? _tmpl$3$1.cloneNode(true)), memo(() => memo(() => !!local.prevLabel)() && (() => {
                 const _el$5 = _tmpl$4.cloneNode(true);
                 insert(_el$5, () => local.prevLabel);
                 return _el$5;
               })())];
             }
           });
-        })()), createMemo((() => {
-          const _c$2 = createMemo(() => !!(local.wrap || activeIndex() !== items().length - 1));
+        })()), memo((() => {
+          const _c$2 = memo(() => !!(local.wrap || activeIndex() !== items().length - 1));
           return () => _c$2() && createComponent(Anchor$1, {
             "class": `${prefix}-control-next`,
             onClick: next,
             get children() {
-              return [createMemo(() => local.nextIcon ?? _tmpl$5.cloneNode(true)), createMemo(() => createMemo(() => !!local.nextLabel)() && (() => {
+              return [memo(() => local.nextIcon ?? _tmpl$5.cloneNode(true)), memo(() => memo(() => !!local.nextLabel)() && (() => {
                 const _el$7 = _tmpl$4.cloneNode(true);
                 insert(_el$7, () => local.nextLabel);
                 return _el$7;
@@ -7281,7 +7358,7 @@
       }
     }, props, {
       get children() {
-        return [createMemo(() => local.children), (() => {
+        return [memo(() => local.children), (() => {
           const _el$ = _tmpl$$k.cloneNode(true);
           insert(_el$, () => local.label);
           createRenderEffect(() => setAttribute(_el$, "for", local.controlId));
@@ -7391,8 +7468,8 @@
               get as() {
                 return local.as;
               }
-            })), createMemo((() => {
-              const _c$ = createMemo(() => !!hasLabel());
+            })), memo((() => {
+              const _c$ = memo(() => !!hasLabel());
               return () => _c$() && createComponent(FormCheckLabel$1, {
                 get title() {
                   return local.title;
@@ -7401,8 +7478,8 @@
                   return local.label;
                 }
               });
-            })()), createMemo((() => {
-              const _c$2 = createMemo(() => !!local.feedback);
+            })()), memo((() => {
+              const _c$2 = memo(() => !!local.feedback);
               return () => _c$2() && createComponent(Feedback$1, {
                 get type() {
                   return local.feedbackType;
@@ -7789,7 +7866,7 @@
       spread(_el$, props, false, true);
       insert(_el$, () => local.children, null);
       insert(_el$, (() => {
-        const _c$ = createMemo(() => !!local.closeButton);
+        const _c$ = memo(() => !!local.closeButton);
         return () => _c$() && createComponent(CloseButton$1, {
           get ["aria-label"]() {
             return local.closeLabel;
@@ -8402,22 +8479,26 @@
           return classNames(`${bsPrefix}-backdrop`, local.backdropClass);
         }
       }), false, true);
-      insert(_el$, () => props.children);
       return _el$;
     })();
-    const renderDialog = (dialogProps) => (() => {
-      const _el$2 = _tmpl$2$3.cloneNode(true);
-      spread(_el$2, mergeProps(dialogProps, props, {
-        get ["class"]() {
-          return classNames(local.class, bsPrefix, `${bsPrefix}-${local.placement}`);
-        },
-        get ["aria-labelledby"]() {
-          return local["aria-labelledby"];
-        }
-      }), false, true);
-      insert(_el$2, () => local.children);
-      return _el$2;
-    })();
+    let child;
+    const renderDialog = (dialogProps) => {
+      if (!child)
+        child = children(() => local.children);
+      return (() => {
+        const _el$2 = _tmpl$2$3.cloneNode(true);
+        spread(_el$2, mergeProps(dialogProps, props, {
+          get ["class"]() {
+            return classNames(local.class, bsPrefix, `${bsPrefix}-${local.placement}`);
+          },
+          get ["aria-labelledby"]() {
+            return local["aria-labelledby"];
+          }
+        }), false, true);
+        insert(_el$2, child);
+        return _el$2;
+      })();
+    };
     return createComponent(ModalContext$1.Provider, {
       value: modalContext,
       get children() {
@@ -8643,7 +8724,7 @@
         }
       }, props, {
         get children() {
-          return [createMemo(() => local.children), createMemo(() => createMemo(() => !!(local.active && local.activeLabel))() && (() => {
+          return [memo(() => local.children), memo(() => memo(() => !!(local.active && local.activeLabel))() && (() => {
             const _el$2 = _tmpl$2$2.cloneNode(true);
             insert(_el$2, () => local.activeLabel);
             return _el$2;
@@ -8787,7 +8868,7 @@
       }), false, true);
       spread(_el$2, mergeProps(() => local.arrowProps, () => context2?.arrowProps), false, false);
       insert(_el$, (() => {
-        const _c$ = createMemo(() => !!local.body);
+        const _c$ = memo(() => !!local.body);
         return () => _c$() ? createComponent(PopoverBody, {
           get children() {
             return local.children;
@@ -8902,11 +8983,7 @@
     transitionClasses: fadeStyles
   }));
   var ToastFade$1 = ToastFade;
-  var ToastContext = createContext({
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    onClose() {
-    }
-  });
+  var ToastContext = createContext();
   var ToastContext$1 = ToastContext;
   var _tmpl$$3 = /* @__PURE__ */ template(`<div></div>`, 2);
   var defaultProps$32 = {
@@ -8929,7 +9006,7 @@
       }), false, true);
       insert(_el$, () => local.children, null);
       insert(_el$, (() => {
-        const _c$ = createMemo(() => !!local.closeButton);
+        const _c$ = memo(() => !!local.closeButton);
         return () => _c$() && createComponent(CloseButton$1, {
           get ["aria-label"]() {
             return local.closeLabel;
@@ -8957,7 +9034,7 @@
   var Toast = (p2) => {
     const [local, props] = splitProps(mergeProps(defaultProps$22, p2), ["bsPrefix", "class", "transition", "show", "animation", "delay", "autohide", "onClose", "bg"]);
     const bsPrefix = useBootstrapPrefix(local.bsPrefix, "toast");
-    const owner = getOwner();
+    let owner;
     let delayRef = local.delay;
     let onCloseRef = local.onClose;
     createEffect(() => {
@@ -9001,17 +9078,28 @@
     })());
     return createComponent(ToastContext$1.Provider, {
       value: toastContext,
-      get children() {
-        return createMemo(() => !!(hasAnimation && local.transition))() ? createComponent(Transition3, {
-          appear: true,
-          get ["in"]() {
-            return local.show;
+      children: () => {
+        owner = getOwner();
+        return createComponent(Show, {
+          get when() {
+            return hasAnimation && local.transition;
           },
-          unmountOnExit: true,
-          get children() {
+          get fallback() {
             return createComponent(ToastInner, {});
+          },
+          get children() {
+            return createComponent(Transition3, {
+              appear: true,
+              get ["in"]() {
+                return local.show;
+              },
+              unmountOnExit: true,
+              get children() {
+                return createComponent(ToastInner, {});
+              }
+            });
           }
-        }) : createComponent(ToastInner, {});
+        });
       }
     });
   };
@@ -9602,7 +9690,7 @@
                           return item.count;
                         },
                         get children() {
-                          return [createMemo(() => item.count), "\u4EBA"];
+                          return [memo(() => item.count), "\u4EBA"];
                         }
                       })
                     });
@@ -9972,7 +10060,11 @@
         }
         return;
       } else if (isArray && partType === "object") {
-        const { from = 0, to = current.length - 1, by = 1 } = part;
+        const {
+          from = 0,
+          to = current.length - 1,
+          by = 1
+        } = part;
         for (let i2 = from; i2 <= to; i2 += by) {
           updatePath2(current, [i2].concat(path), traversed);
         }
@@ -10346,7 +10438,7 @@
               },
               onclick: onclose,
               get children() {
-                return ["#", createMemo(() => props.idx), "\u53F7\u73A9\u5BB6 \u786E\u8BA4\u8EAB\u4EFD"];
+                return ["#", memo(() => props.idx), "\u53F7\u73A9\u5BB6 \u786E\u8BA4\u8EAB\u4EFD"];
               }
             }), null);
             return _el$4;
@@ -10385,17 +10477,18 @@
   var _tmpl$44 = /* @__PURE__ */ template(`<div>\u8BE5\u8F6E\u4EFB\u52A1\u9700\u8981\u6709 <b style=font-size:1.2rem></b> \u7968 \u5931\u8D25\u7968\u624D\u4F1A\u5931\u8D25`);
   var _tmpl$54 = /* @__PURE__ */ template(`<div class=task-info><div>\u9700\u8981 <b style=font-size:1.2rem></b> \u4F4D\u73A9\u5BB6\u53C2\u52A0\u4EFB\u52A1`);
   var _tmpl$64 = /* @__PURE__ */ template(`<div class=vote-tip><b></b> \u53F7\u73A9\u5BB6 \u5F00\u59CB\u6295\u7968`);
-  var _tmpl$72 = /* @__PURE__ */ template(`<span class=select-icon>\u5DF2\u9009\u62E9`);
-  var _tmpl$82 = /* @__PURE__ */ template(`<div class=vote-box><div class=success>\u6210\u529F</div><div class=fail>\u5931\u8D25`);
-  var _tmpl$9 = /* @__PURE__ */ template(`<div class=vote-action-button>`);
-  var _tmpl$10 = /* @__PURE__ */ template(`<div class=player-tip>\u7B2C <span class=bold-font></span> \u8F6E\u6E38\u620F`);
-  var _tmpl$11 = /* @__PURE__ */ template(`<div class=player-tip>\u672C\u6B21\u4EFB\u52A1\u9700\u8981 <span class=bold-font></span> \u5931\u8D25\u7968\u624D\u4F1A\u5931\u8D25`);
-  var _tmpl$12 = /* @__PURE__ */ template(`<div class=player-tip>\u672C\u8F6E\u6E38\u620F\u8FD8\u9700\u8981<span class=bold-font></span>\u4F4D\u73A9\u5BB6\u53C2\u4E0E\u6295\u7968`);
-  var _tmpl$13 = /* @__PURE__ */ template(`<div class=player-tip>\u9009\u62E9\u6295\u7968\u7684\u73A9\u5BB6`);
-  var _tmpl$14 = /* @__PURE__ */ template(`<div class=player-selector>`);
-  var _tmpl$15 = /* @__PURE__ */ template(`<div class=player-vote-confirm>`);
-  var _tmpl$16 = /* @__PURE__ */ template(`<div class=tip><b>\u53F7\u73A9\u5BB6</b> \u8BF7\u9009\u62E9\u9700\u8981\u523A\u6740\u7684\u73A9\u5BB6`);
-  var _tmpl$17 = /* @__PURE__ */ template(`<div class=player-selector-box>`);
+  var _tmpl$72 = /* @__PURE__ */ template(`<div class=vote-box>`);
+  var _tmpl$82 = /* @__PURE__ */ template(`<div class=vote-action-button>`);
+  var _tmpl$9 = /* @__PURE__ */ template(`<span class=select-icon>\u5DF2\u9009\u62E9`);
+  var _tmpl$0 = /* @__PURE__ */ template(`<div>`);
+  var _tmpl$1 = /* @__PURE__ */ template(`<div class=player-tip>\u7B2C <span class=bold-font></span> \u8F6E\u6E38\u620F`);
+  var _tmpl$10 = /* @__PURE__ */ template(`<div class=player-tip>\u672C\u6B21\u4EFB\u52A1\u9700\u8981 <span class=bold-font></span> \u5931\u8D25\u7968\u624D\u4F1A\u5931\u8D25`);
+  var _tmpl$11 = /* @__PURE__ */ template(`<div class=player-tip>\u672C\u8F6E\u6E38\u620F\u8FD8\u9700\u8981<span class=bold-font></span>\u4F4D\u73A9\u5BB6\u53C2\u4E0E\u6295\u7968`);
+  var _tmpl$12 = /* @__PURE__ */ template(`<div class=player-tip>\u9009\u62E9\u6295\u7968\u7684\u73A9\u5BB6`);
+  var _tmpl$13 = /* @__PURE__ */ template(`<div class=player-selector>`);
+  var _tmpl$14 = /* @__PURE__ */ template(`<div class=player-vote-confirm>`);
+  var _tmpl$15 = /* @__PURE__ */ template(`<div class=tip><b>\u53F7\u73A9\u5BB6</b> \u8BF7\u9009\u62E9\u9700\u8981\u523A\u6740\u7684\u73A9\u5BB6`);
+  var _tmpl$16 = /* @__PURE__ */ template(`<div class=player-selector-box>`);
   var GameTaskContainer = styled.div({
     width: "100%",
     height: "100%",
@@ -10682,16 +10775,16 @@
                       return !task.status;
                     },
                     get children() {
-                      var _el$7 = _tmpl$54(), _el$8 = _el$7.firstChild, _el$9 = _el$8.firstChild, _el$10 = _el$9.nextSibling;
-                      insert(_el$10, () => task.taskPlayer);
+                      var _el$7 = _tmpl$54(), _el$8 = _el$7.firstChild, _el$9 = _el$8.firstChild, _el$0 = _el$9.nextSibling;
+                      insert(_el$0, () => task.taskPlayer);
                       insert(_el$7, createComponent(Show, {
                         get when() {
                           return task.failCount > 1;
                         },
                         get children() {
-                          var _el$11 = _tmpl$44(), _el$12 = _el$11.firstChild, _el$13 = _el$12.nextSibling;
-                          insert(_el$13, () => task.failCount);
-                          return _el$11;
+                          var _el$1 = _tmpl$44(), _el$10 = _el$1.firstChild, _el$11 = _el$10.nextSibling;
+                          insert(_el$11, () => task.failCount);
+                          return _el$1;
                         }
                       }), null);
                       return _el$7;
@@ -10848,48 +10941,51 @@
           updateVoteStatus(status);
           close();
         };
+        const sort_vote = randomArray([true, false]);
         return createComponent(VoteBoxWapper, {
           get children() {
             return [(() => {
-              var _el$14 = _tmpl$64(), _el$15 = _el$14.firstChild;
-              insert(_el$15, () => player.id);
+              var _el$12 = _tmpl$64(), _el$13 = _el$12.firstChild;
+              insert(_el$13, () => player.id);
+              return _el$12;
+            })(), (() => {
+              var _el$14 = _tmpl$72();
+              insert(_el$14, createComponent(For, {
+                each: sort_vote,
+                children: (vote) => {
+                  return (() => {
+                    var _el$16 = _tmpl$0();
+                    addEventListener(_el$16, "click", onVote.bind(void 0, vote), true);
+                    className(_el$16, vote ? "success" : "fail");
+                    insert(_el$16, vote ? "\u6210\u529F" : "\u5931\u8D25", null);
+                    insert(_el$16, createComponent(Show, {
+                      get when() {
+                        return vote_succces() === vote;
+                      },
+                      get children() {
+                        return _tmpl$9();
+                      }
+                    }), null);
+                    return _el$16;
+                  })();
+                }
+              }));
               return _el$14;
             })(), (() => {
-              var _el$16 = _tmpl$82(), _el$17 = _el$16.firstChild, _el$18 = _el$17.firstChild, _el$20 = _el$17.nextSibling, _el$21 = _el$20.firstChild;
-              addEventListener(_el$17, "click", onVote.bind(void 0, true), true);
-              insert(_el$17, createComponent(Show, {
-                get when() {
-                  return vote_succces() === true;
-                },
-                get children() {
-                  return _tmpl$72();
-                }
-              }), null);
-              addEventListener(_el$20, "click", onVote.bind(void 0, false), true);
-              insert(_el$20, createComponent(Show, {
-                get when() {
-                  return vote_succces() === false;
-                },
-                get children() {
-                  return _tmpl$72();
-                }
-              }), null);
-              return _el$16;
-            })(), (() => {
-              var _el$23 = _tmpl$9();
-              insert(_el$23, createComponent(Button$12, {
+              var _el$15 = _tmpl$82();
+              insert(_el$15, createComponent(Button$12, {
                 get variant() {
                   return vote_succces() !== void 0 ? "primary" : "secondary";
                 },
                 onclick: onSubmit,
                 children: "\u786E\u5B9A"
               }), null);
-              insert(_el$23, createComponent(Button$12, {
+              insert(_el$15, createComponent(Button$12, {
                 variant: "secondary",
                 onclick: close,
                 children: "\u53D6\u6D88"
               }), null);
-              return _el$23;
+              return _el$15;
             })()];
           }
         });
@@ -10915,25 +11011,25 @@
     return createComponent(VoteModal, {
       get children() {
         return [(() => {
-          var _el$24 = _tmpl$10(), _el$25 = _el$24.firstChild, _el$26 = _el$25.nextSibling;
-          insert(_el$26, () => props.task.id);
-          return _el$24;
+          var _el$18 = _tmpl$1(), _el$19 = _el$18.firstChild, _el$20 = _el$19.nextSibling;
+          insert(_el$20, () => props.task.id);
+          return _el$18;
         })(), createComponent(Show, {
           get when() {
             return props.task.failCount > 1;
           },
           get children() {
-            var _el$27 = _tmpl$11(), _el$28 = _el$27.firstChild, _el$29 = _el$28.nextSibling;
-            insert(_el$29, () => props.task.failCount);
-            return _el$27;
+            var _el$21 = _tmpl$10(), _el$22 = _el$21.firstChild, _el$23 = _el$22.nextSibling;
+            insert(_el$23, () => props.task.failCount);
+            return _el$21;
           }
         }), (() => {
-          var _el$30 = _tmpl$12(), _el$31 = _el$30.firstChild, _el$32 = _el$31.nextSibling;
-          insert(_el$32, last_vote);
-          return _el$30;
-        })(), _tmpl$13(), (() => {
-          var _el$34 = _tmpl$14();
-          insert(_el$34, createComponent(For, {
+          var _el$24 = _tmpl$11(), _el$25 = _el$24.firstChild, _el$26 = _el$25.nextSibling;
+          insert(_el$26, last_vote);
+          return _el$24;
+        })(), _tmpl$12(), (() => {
+          var _el$28 = _tmpl$13();
+          insert(_el$28, createComponent(For, {
             get each() {
               return player_selector_data();
             },
@@ -10949,21 +11045,21 @@
               });
             }
           }));
-          return _el$34;
+          return _el$28;
         })(), (() => {
-          var _el$35 = _tmpl$15();
-          insert(_el$35, createComponent(Button$12, {
+          var _el$29 = _tmpl$14();
+          insert(_el$29, createComponent(Button$12, {
             onclick: confirm,
             children: "\u786E\u8BA4\u7968\u578B"
           }), null);
-          insert(_el$35, createComponent(Button$12, {
+          insert(_el$29, createComponent(Button$12, {
             variant: "secondary",
             get onclick() {
               return props.cannel;
             },
             children: "\u8FD4\u56DE"
           }), null);
-          return _el$35;
+          return _el$29;
         })()];
       }
     });
@@ -11023,12 +11119,12 @@
     return createComponent(AssassinModalContainer, {
       get children() {
         return [(() => {
-          var _el$36 = _tmpl$16(), _el$37 = _el$36.firstChild, _el$38 = _el$37.firstChild;
-          insert(_el$37, () => assassin().id, _el$38);
-          return _el$36;
+          var _el$30 = _tmpl$15(), _el$31 = _el$30.firstChild, _el$32 = _el$31.firstChild;
+          insert(_el$31, () => assassin().id, _el$32);
+          return _el$30;
         })(), (() => {
-          var _el$39 = _tmpl$17();
-          insert(_el$39, createComponent(For, {
+          var _el$33 = _tmpl$16();
+          insert(_el$33, createComponent(For, {
             get each() {
               return players();
             },
@@ -11046,7 +11142,7 @@
               });
             }
           }));
-          return _el$39;
+          return _el$33;
         })(), createComponent(Button$12, {
           onclick: onKill,
           "class": "confirm",

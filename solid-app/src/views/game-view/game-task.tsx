@@ -430,24 +430,25 @@ const VoteSelector:Component<{
                 updateVoteStatus(status);
                 close();
             }
+            const sort_vote = randomArray([true, false]);
             return (
                 <VoteBoxWapper>
                     <div class="vote-tip">
                         <b>{player.id}</b> 号玩家 开始投票
                     </div>
                     <div class="vote-box">
-                        <div class="success" onclick={onVote.bind(void 0, true)}>
-                            成功
-                            <Show when={vote_succces() === true}>
-                                <span class="select-icon">已选择</span>
-                            </Show>
-                        </div>
-                        <div class="fail" onclick={onVote.bind(void 0, false)}>
-                            失败
-                            <Show when={vote_succces() === false}>
-                                <span class="select-icon">已选择</span>
-                            </Show>
-                        </div>
+                        <For each={sort_vote}>
+                            {(vote) => {
+                                return (
+                                    <div class={vote?'success': 'fail'} onclick={onVote.bind(void 0, vote)}>
+                                        {vote ? '成功' : '失败'}
+                                        <Show when={vote_succces() === vote}>
+                                            <span class="select-icon">已选择</span>
+                                        </Show>
+                                    </div>
+                                )
+                            }}
+                        </For>
                     </div>
                     <div class="vote-action-button">
                         <Button variant={vote_succces() !== void 0? 'primary' : 'secondary'} onclick={onSubmit}>确定</Button>
